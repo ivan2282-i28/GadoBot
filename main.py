@@ -11,6 +11,8 @@ from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 
+from translation import translation
+
 # Load environment variables
 load_dotenv()
 
@@ -30,6 +32,9 @@ if not API_TOKEN:
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
+
+def lang(string: str):
+    return translation["ru"][string]
 # Database setup
 def init_db():
     conn = sqlite3.connect('filters.db')
@@ -168,7 +173,7 @@ async def cmd_start(message: Message):
         "🤖 <b>ГадоБот</b>\n\n"
         "Киминды:\n"
         "• /filter [trigger] [response] - Нагадить фильтр\n"
-        "• /filter [trigger] (reply to media) - Нагадить медиа фильтр (пока только фото без caption)\n"
+        "• /filter [trigger] (reply to media) - Нагадить медиа фильтр\n"
         "• /filters - Список фильтр\n"
         "• /remove_filter [trigger] - Прогнать гадский фильтр\n"
         "• /remove_all_filters - рататататата\n\n"
@@ -193,7 +198,7 @@ async def cmd_filter(message: Message):
     """Add a filter to the chat"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ У тебя должно быть право менять гадо профиль")
+        await message.answer(lang("no_perm_profile"))
         return
 
     # Check if replying to media
@@ -205,8 +210,9 @@ async def cmd_filter(message: Message):
             return
         
         trigger = parts[1].strip()
-        response = "Media response"  # Placeholder, media will be sent instead
-        
+        response = ""  # Placeholder, media will be sent instead
+        if message.caption:
+            response = message.caption
         # Get file info based on content type
         file_id = None
         file_type = message.reply_to_message.content_type
@@ -224,7 +230,7 @@ async def cmd_filter(message: Message):
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
-                await message.answer("❌ Такой уже есть.")
+                await message.answer(lang("already_exists"))
                 return
         
         # Add filter to database
@@ -247,7 +253,7 @@ async def cmd_filter(message: Message):
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
-                await message.answer("❌ Фильтр с таким гадо тригиром уже есть")
+                await message.answer(lang("already_exists"))
                 return
         
         # Add filter to database
@@ -273,7 +279,7 @@ async def cmd_filters(message: Message):
     """List all filters in the chat"""
     filters = get_chat_filters(message.chat.id)
     if not filters:
-        await message.answer("❌ Нету гадофильтров")
+        await message.answer(lang("not_exists_filter_all"))
         return
     
     filters_list = []
@@ -302,7 +308,7 @@ async def cmd_remove_filter(message: Message):
     """Remove a specific filter"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ У тебя должно быть право менять гадо профиль")
+        await message.answer(lang("no_perm_profile"))
         return
     
     # Parse command arguments
@@ -328,14 +334,14 @@ async def cmd_remove_all_filters(message: Message):
     """Remove all filters in the chat"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ У тебя должно быть право менять гадо профиль")
+        await message.answer(lang("no_perm_profile"))
         return
     
     # Remove all filters
     count = remove_all_filters(message.chat.id)
     
     if count == 0:
-        await message.answer("❌ Нету фильтров в чате :3")
+        await message.answer(lang("not_exists_filter_all"))
         return
     
     await message.answer(f"✅ Ратататат {count}")
