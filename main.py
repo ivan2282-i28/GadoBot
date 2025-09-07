@@ -180,7 +180,11 @@ async def cmd_start(message: Message):
         "• <code>/filter r\"hello|hi\" \"Hey there!\"</code>\n"
         "• <code>/filter \"thank you\" \"You're welcome!\"</code>\n"
         "• <code>/filter hello Hello_back!</code>\n"
-        "• Reply to a photo with <code>/filter cat_pic</code>"
+        "• Reply to a photo with <code>/filter cat_pic</code>\n"
+        "ГадоИнфа:"
+        "ГадоЭтот ГадоБот ГадоБыл ГадоСделан ГадоДля ГадоЧата ГадаРотен ГадоХуманете\n"
+        "Под ГадоЛицензитей ГадоАпафь Тву поинт ноль \n"
+        "ГадоСурсы на ГадоХабе: https://github.com/ivan2282-i28/GadoBot"
     )
     await message.answer(help_text, parse_mode=ParseMode.HTML)
 
