@@ -193,7 +193,7 @@ async def cmd_filter(message: Message):
     """Add a filter to the chat"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ You need to be an admin with 'Change Info' permission to use this command.")
+        await message.answer("❌ У тебя должно быть право менять гадо профиль")
         return
 
     # Check if replying to media
@@ -201,7 +201,7 @@ async def cmd_filter(message: Message):
         # Media filter - parse the trigger from the command
         parts = message.text.split(' ', 1)
         if len(parts) < 2:
-            await message.answer("❌ Usage: Reply to media with /filter <trigger>")
+            await message.answer("❌ Как гадить?: Ответь на медию /filter <trigger>")
             return
         
         trigger = parts[1].strip()
@@ -224,30 +224,30 @@ async def cmd_filter(message: Message):
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
-                await message.answer("❌ A filter with this trigger already exists.")
+                await message.answer("❌ Такой уже есть.")
                 return
         
         # Add filter to database
         add_filter(message.chat.id, trigger, response, file_id, file_type)
         
         await message.answer(
-            f"✅ <b>Media filter added!</b>\n\n"
+            f"✅ <b>Фильтр добавлен!</b>\n\n"
             f"<b>Trigger:</b> <code>{escape_html(trigger)}</code>\n"
-            f"<b>Type:</b> {file_type.capitalize()}",
+            # f"<b>Type:</b> {file_type.capitalize()}",
             parse_mode=ParseMode.HTML
         )
     else:
         # Text filter - parse trigger and response from command
         trigger, response = parse_filter_command(message.text)
         if not trigger or not response:
-            await message.answer("❌ Usage: /filter <trigger> <response>")
+            await message.answer("❌ Как гадить?: /filter <trigger> <response>")
             return
         
         # Check if trigger already exists
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
-                await message.answer("❌ A filter with this trigger already exists.")
+                await message.answer("❌ Фильтр с таким гадо тригиром уже есть")
                 return
         
         # Add filter to database
@@ -262,9 +262,9 @@ async def cmd_filter(message: Message):
             clean_trigger = trigger
         
         await message.answer(
-            f"✅ <b>{filter_type} filter added!</b>\n\n"
+            f"✅ <b>{filter_type} Фильтр добавлен!</b>\n\n"
             f"<b>Trigger:</b> <code>{escape_html(clean_trigger)}</code>\n"
-            f"<b>Response:</b> {escape_html(response)}",
+            # f"<b>Response:</b> {escape_html(response)}",
             parse_mode=ParseMode.HTML
         )
 
@@ -273,7 +273,7 @@ async def cmd_filters(message: Message):
     """List all filters in the chat"""
     filters = get_chat_filters(message.chat.id)
     if not filters:
-        await message.answer("❌ No filters set in this chat.")
+        await message.answer("❌ Нету гадофильтров")
         return
     
     filters_list = []
@@ -302,13 +302,13 @@ async def cmd_remove_filter(message: Message):
     """Remove a specific filter"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ You need to be an admin with 'Change Info' permission to use this command.")
+        await message.answer("❌ У тебя должно быть право менять гадо профиль")
         return
     
     # Parse command arguments
     parts = message.text.split(' ', 1)
     if len(parts) < 2:
-        await message.answer("❌ Usage: /remove_filter <trigger>")
+        await message.answer("❌ Как гадить?: /remove_filter <trigger>")
         return
     
     trigger = parts[1].strip()
@@ -317,10 +317,10 @@ async def cmd_remove_filter(message: Message):
     success = remove_filter(message.chat.id, trigger)
     
     if not success:
-        await message.answer("❌ No filter found with this trigger.")
+        await message.answer("❌ Нету фильтра с таким тригером.")
         return
     
-    await message.answer(f"✅ Filter removed: <code>{escape_html(trigger)}</code>", 
+    await message.answer(f"✅ Фильтр рататата: <code>{escape_html(trigger)}</code>", 
                          parse_mode=ParseMode.HTML)
 
 @dp.message(Command("remove_all_filters"))
@@ -328,17 +328,17 @@ async def cmd_remove_all_filters(message: Message):
     """Remove all filters in the chat"""
     # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
-        await message.answer("❌ You need to be an admin with 'Change Info' permission to use this command.")
+        await message.answer("❌ У тебя должно быть право менять гадо профиль")
         return
     
     # Remove all filters
     count = remove_all_filters(message.chat.id)
     
     if count == 0:
-        await message.answer("❌ No filters to remove in this chat.")
+        await message.answer("❌ Нету фильтров в чате :3")
         return
     
-    await message.answer(f"✅ Removed all {count} filters from this chat.")
+    await message.answer(f"✅ Ратататат {count}")
 
 @dp.message(F.text)
 async def message_handler(message: Message):
