@@ -232,7 +232,7 @@ async def cmd_filter(message: Message):
         
         await message.answer(
             f"✅ <b>Фильтр добавлен!</b>\n\n"
-            f"<b>Trigger:</b> <code>{escape_html(trigger)}</code>\n"
+            f"<b>Trigger:</b> <code>{escape_html(trigger)}</code>\n",
             # f"<b>Type:</b> {file_type.capitalize()}",
             parse_mode=ParseMode.HTML
         )
@@ -263,7 +263,7 @@ async def cmd_filter(message: Message):
         
         await message.answer(
             f"✅ <b>{filter_type} Фильтр добавлен!</b>\n\n"
-            f"<b>Trigger:</b> <code>{escape_html(clean_trigger)}</code>\n"
+            f"<b>Trigger:</b> <code>{escape_html(clean_trigger)}</code>\n",
             # f"<b>Response:</b> {escape_html(response)}",
             parse_mode=ParseMode.HTML
         )
