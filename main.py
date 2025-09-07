@@ -278,17 +278,18 @@ async def cmd_filters(message: Message):
     
     filters_list = []
     for i, (trigger, response, file_id, file_type) in enumerate(filters, 1):
-        if trigger.startswith('r"') and trigger.endswith('"'):
-            display_trigger = f"Regex: {trigger[2:-1]}"
-        else:
-            display_trigger = f"Text: {trigger}"
-        
+        # if trigger.startswith('r"') and trigger.endswith('"'):
+        #     display_trigger = f"Regex: {trigger[2:-1]}"
+        # else:
+        #     display_trigger = f"Text: {trigger}"
+        display_trigger = trigger
         if file_type:
             display_response = f"[{file_type.capitalize()}]"
         else:
             display_response = response
         
-        filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code> → {escape_html(display_response)}")
+        # filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code> → {escape_html(display_response)}")
+        filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code>")
     
     filters_text = "\n".join(filters_list)
     await message.answer(
