@@ -211,8 +211,10 @@ async def cmd_filter(message: Message):
         
         trigger = parts[1].strip()
         response = ""  # Placeholder, media will be sent instead
-        if message.caption:
-            response = message.caption
+        if message.reply_to_message.caption:
+            response = message.reply_to_message.caption
+        elif message.reply_to_message.text:
+            esponse = message.reply_to_message.text
         # Get file info based on content type
         file_id = None
         file_type = message.reply_to_message.content_type
