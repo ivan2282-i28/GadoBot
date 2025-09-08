@@ -63,6 +63,8 @@ def escape_html(text: str) -> str:
 
 async def user_can_change_info(chat_id: int, user_id: int) -> bool:
     """Check if user can change chat info (admin with appropriate rights)"""
+    a = await bot.get_chat_member(chat_id,API_TOKEN.split(":")[0])
+    if not isinstance(a,types.ChatMemberAdministrator): return True
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         if member.status in ['administrator', 'creator']:
