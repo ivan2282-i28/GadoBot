@@ -286,8 +286,6 @@ async def cmd_filters(message: Message):
         await message.answer(lang("not_exists_filter_all"))
         return
     
-
-    
     filters_list = []
     for i, (trigger, response, file_id, file_type) in enumerate(filters, 1):
         # if trigger.startswith('r"') and trigger.endswith('"'):
@@ -303,7 +301,7 @@ async def cmd_filters(message: Message):
         # filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code> → {escape_html(display_response)}")
         filters_list.append(f"<code>{escape_html(display_trigger)}</code>")
     
-    filters_list = list(await filters_list.sort())
+    filters_list.sort(key=lambda x: x[0])
 
     filters_text = "\n".join(filters_list)
     await message.answer(
