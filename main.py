@@ -360,6 +360,7 @@ async def message_handler(message: Message):
     text = message.text.lower() if message.text else ""
     
     for trigger, response, file_id, file_type in filters:
+        tragger = trigger.lower()
         # Handle regex triggers
         if trigger.startswith('r"') and trigger.endswith('"'):
             pattern = trigger[2:-1]  # Extract pattern from r"pattern"
@@ -371,7 +372,8 @@ async def message_handler(message: Message):
                 logger.error(f"Regex error in pattern '{pattern}': {e}")
         
         # Handle text triggers (case-insensitive)
-        elif trigger.lower() in text:
+        
+        elif f" {tragger} " in text or text.startswith(f"{tragger} ") or text.endswith(f" {tragger}") or text == tragger:
             await send_filter_response(message, response, file_id, file_type)
             break
 
