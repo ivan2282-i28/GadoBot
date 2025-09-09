@@ -303,7 +303,7 @@ async def cmd_filters(message: Message):
         # filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code> → {escape_html(display_response)}")
         filters_list.append(f"<code>{escape_html(display_trigger)}</code>")
     
-    filters_list = list(filters_list.sort())
+    filters_list = list(await filters_list.sort())
 
     filters_text = "\n".join(filters_list)
     await message.answer(
