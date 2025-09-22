@@ -6,38 +6,36 @@ import html
 from typing import Dict, List, Tuple, Union, Optional
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import Message, ContentType
+from aiogram.types import Message, ContentType, Chat
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 import random
 from translation import translation
 
-# Load environment variables
 load_dotenv()
 
-# Configure logging
+db_path = "gado.db"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Bot token from environment variable
 API_TOKEN = os.getenv('BOT_TOKEN')
 if not API_TOKEN:
     raise ValueError("BOT_TOKEN environment variable not set")
 
-# Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 
 def lang(string: str):
-    return translation["ru"][string]
-# Database setup
+    return translation["eng"][string]
+
 def init_db():
-    conn = sqlite3.connect('filters.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS filters (
@@ -50,27 +48,63 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        username TEXT,
+        lang TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
     conn.commit()
     conn.close()
 
+
+
 init_db()
 
+
+def register_chat(chat : Chat):
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, username, lang FROM chats WHERE chat_id = ?', (chat.id,))
+    chater = cursor.fetchone()
+    conn.close()
+    if not chater:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO chats (chat_id, name, username, lang) VALUES (?, ?, ?, ?)', (chat.id, chat.full_name, chat.username, "ru"))
+        conn.commit()
+        conn.close()
+    else:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('UPDATE chats SET name = ?, username = ?, ... WHERE chat_id = ?', (chat.full_name, chat.username, chat.id))
+        conn.commit()
+        conn.close()
+def get_chat(chat_id : int):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, username, lang FROM chats WHERE chat_id = ?', (chat.id,))
+    chat = cursor.fetchone()
+    conn.close()
+    return chat
 def escape_html(text: str) -> str:
-    """Escape HTML special characters"""
     if not text:
         return ""
     return html.escape(text)
 
-async def user_can_change_info(chat_id: int, user_id: int) -> bool:
-    """Check if user can change chat info (admin with appropriate rights)"""
+async def user_can_change_info(chat_id: int, user_id: int, fun: bool) -> bool:
     a = await bot.get_chat_member(chat_id,API_TOKEN.split(":")[0])
-    if not isinstance(a,types.ChatMemberAdministrator): return True
+    if not isinstance(a,types.ChatMemberAdministrator) and fun: return True
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         if member.status in ['administrator', 'creator']:
             if member.status == 'creator':
                 return True
-            # Check if admin has the right to change info
             return member.can_change_info if hasattr(member, 'can_change_info') else False
         return False
     except Exception as e:
@@ -78,8 +112,7 @@ async def user_can_change_info(chat_id: int, user_id: int) -> bool:
         return False
 
 def add_filter(chat_id: int, trigger: str, response: str, file_id: Optional[str] = None, file_type: Optional[str] = None):
-    """Add a filter to the database"""
-    conn = sqlite3.connect('filters.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute(
         'INSERT INTO filters (chat_id, trigger, response, file_id, file_type) VALUES (?, ?, ?, ?, ?)',
@@ -89,8 +122,7 @@ def add_filter(chat_id: int, trigger: str, response: str, file_id: Optional[str]
     conn.close()
 
 def get_chat_filters(chat_id: int) -> List[Tuple]:
-    """Get all filters for a chat"""
-    conn = sqlite3.connect('filters.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT trigger, response, file_id, file_type FROM filters WHERE chat_id = ?', (chat_id,))
     filters = cursor.fetchall()
@@ -98,8 +130,7 @@ def get_chat_filters(chat_id: int) -> List[Tuple]:
     return filters
 
 def remove_filter(chat_id: int, trigger: str) -> bool:
-    """Remove a specific filter from the database"""
-    conn = sqlite3.connect('filters.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM filters WHERE chat_id = ? AND trigger = ?', (chat_id, trigger))
     affected = cursor.rowcount
@@ -108,8 +139,7 @@ def remove_filter(chat_id: int, trigger: str) -> bool:
     return affected > 0
 
 def remove_all_filters(chat_id: int) -> int:
-    """Remove all filters for a chat"""
-    conn = sqlite3.connect('filters.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM filters WHERE chat_id = ?', (chat_id,))
     affected = cursor.rowcount
@@ -118,22 +148,17 @@ def remove_all_filters(chat_id: int) -> int:
     return affected
 
 def parse_filter_command(text: str) -> tuple:
-    """Parse filter command with proper handling of regex patterns"""
-    # Remove the command part
     if text.startswith('/filter'):
         text = text[len('/filter'):].strip()
     
-    # Check if it's a regex pattern (starts with r")
     if text.startswith('r"'):
-        # Find the closing quote
         end_quote = text.find('"', 2)
         if end_quote == -1:
-            return None, None  # No closing quote found
+            return None, None
         
-        trigger = text[:end_quote + 1]  # Include the r" and closing quote
+        trigger = text[:end_quote + 1]
         response = text[end_quote + 1:].strip()
         
-        # If response starts with a quote, remove it
         if response.startswith('"'):
             response = response[1:]
         if response.endswith('"'):
@@ -141,24 +166,19 @@ def parse_filter_command(text: str) -> tuple:
             
         return trigger, response
     
-    # Handle regular quoted triggers
     elif text.startswith('"'):
-        # Find the closing quote
         end_quote = text.find('"', 1)
         if end_quote == -1:
-            return None, None  # No closing quote found
+            return None, None
         
-        trigger = text[:end_quote + 1]  # Include the quotes
+        trigger = text[:end_quote + 1]
         response = text[end_quote + 1:].strip()
         
-        # Remove quotes from trigger
         trigger = trigger[1:-1]
         
         return trigger, response
     
-    # Handle unquoted triggers
     else:
-        # Split on the first space
         parts = text.split(' ', 1)
         if len(parts) < 2:
             return None, None
@@ -170,86 +190,74 @@ def parse_filter_command(text: str) -> tuple:
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    """Handler for /start and /help commands"""
-    help_text = (
-        "🤖 <b>ГадоБот</b>\n\n"
-        "Данный бот призван заменить PROPIETARY, CLOSED SOURCE, NON FREE тг боты\n"
-        "Powerd by: Raspberry OS Lite, CPython 3.13.7, Aiogram 3\n"
-        "На текущий момент достутпны модули: FILTERS\n"
-        "Будут доступны: MODERATION\n"
-        "Source code avalible at: https://github.com/ivan2282-i28/GadoBot\n"
-        "P.S.: помощь перемешена на /help"
-    )
+    help_text = lang("start_message")
     await message.answer(help_text, parse_mode=ParseMode.HTML)
 
 @dp.message(Command("stats"))
 async def cmd_start(message: Message):
-    """Handler for /start and /help commands"""
     help_text = (
-        f'[user@gadobot ~]$ gadobotctl stats {message.chat.id}\n'
-        f"Name: {message.chat.full_name}\n"
-        f"Members: {await message.chat.get_member_count()}\n"
-        f"Username: {message.chat.username}"
+        f'{lang("stats_header")} {message.chat.id}\n'
+        f"{lang('stats_name')}: {message.chat.full_name}\n"
+        f"{lang('stats_members')}: {await message.chat.get_member_count()}\n"
+        f"{lang('stats_username')}: {message.chat.username}"
     )
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+
+@dp.message(Command("stats_global"))
+async def cmd_start(message: Message):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, username, lang FROM chats ', ())
+    chat = cursor.fetchall()
+    conn.close()
+    print(chat)
+    if "~root" in message.text:
+        if message.from_user.id == 1999559891:
+            help_text = (
+                        f'{lang("global_stats_header")}\n'
+                        f"{lang('global_stats_chat_count')}: {len(chat)}\n"
+                        f"{chat}"
+            )
+        else:
+            help_text = (
+            f'{lang("global_stats_header")}\n'
+            f"I do not believe you! YOU ARE NOT ROOT"
+            )
+    else:
+        help_text = (
+            f'{lang("global_stats_header")}\n'
+            f"{lang('global_stats_chat_count')}: {len(chat)}\n"
+        )
     await message.answer(help_text, parse_mode=ParseMode.HTML)
 
 @dp.message(Command("help"))
 async def cmd_start(message: Message):
-    """Handler for /start and /help commands"""
     if random.random() <= 0.2 or "~misc" in message.text:
-        help_text = (
-            '[user@gadobot ~]$ gadobotctl help MISC.module\n'
-            "Помощь по модуля MISC\n"
-            "COMMANDS:\n"
-            "• /stats_global - Статистика бота [NOT WORKING]\n"
-            "• /stats - Статистика чата\n"
-        )
+        help_text = lang("help_misc")
     else:
-        help_text = (
-            '[user@gadobot ~]$ gadobotctl help FILTERS.module\n'
-            "Помощь по модуля FILTERS\n"
-            "Киминды:\n"
-            "• /filter [trigger] [response] - Нагадить фильтр\n"
-            "• /filter [trigger] (reply to media) - Нагадить медиа фильтр\n"
-            "• /filters - Список фильтр\n"
-            "• /remove_filter [trigger] - Прогнать гадский фильтр\n"
-            "• /remove_all_filters - рататататата\n\n"
-            "Типы фильтров:\n"
-            "• <code>regex</code> - Гадь r\"pattern\" чтоб regex\n"
-            "• <code>text</code> - Обычный текст(case-insensitive)\n"
-            "• <code>media</code> - Ответь на медию /filter trigger\n\n"
-            "Экзамплес:\n"
-            "• <code>/filter r\"hello|hi\" \"Hey there!\"</code>\n"
-            "• <code>/filter \"thank you\" \"You're welcome!\"</code>\n"
-            "• <code>/filter hello Hello_back!</code>\n"
-            "• Reply to a photo with <code>/filter cat_pic</code>\n\n"
-        )
+        help_text = lang("help_filters")
     await message.answer(help_text, parse_mode=ParseMode.HTML)
 
 
 @dp.message(Command("filter"))
 async def cmd_filter(message: Message):
-    """Add a filter to the chat"""
-    # Check if user can change chat info
-    if not await user_can_change_info(message.chat.id, message.from_user.id):
+    if not await user_can_change_info(message.chat.id, message.from_user.id, True):
         await message.answer(lang("no_perm_profile"))
         return
 
-    # Check if replying to media
     if message.reply_to_message and message.reply_to_message.content_type in ['photo', 'video', 'document', 'animation']:
-        # Media filter - parse the trigger from the command
         parts = message.text.split(' ', 1)
         if len(parts) < 2:
-            await message.answer("❌ Как гадить?: Ответь на медию /filter <trigger>")
+            await message.answer(lang("filter_usage_media"))
             return
         
         trigger = parts[1].strip()
-        response = ""  # Placeholder, media will be sent instead
+        response = ""
         if message.reply_to_message.caption:
             response = message.reply_to_message.caption
         elif message.reply_to_message.text:
-            esponse = message.reply_to_message.text
-        # Get file info based on content type
+            response = message.reply_to_message.text
+
         file_id = None
         file_type = message.reply_to_message.content_type
         
@@ -262,57 +270,46 @@ async def cmd_filter(message: Message):
         elif file_type == 'animation':
             file_id = message.reply_to_message.animation.file_id
         
-        # Check if trigger already exists
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
                 await message.answer(lang("already_exists"))
                 return
         
-        # Add filter to database
         add_filter(message.chat.id, trigger, response, file_id, file_type)
         
         await message.answer(
-            f"✅ <b>Фильтр добавлен!</b>\n\n"
-            f"<b>Trigger:</b> <code>{escape_html(trigger)}</code>\n",
-            # f"<b>Type:</b> {file_type.capitalize()}",
+            lang("filter_added_media").format(trigger=escape_html(trigger)),
             parse_mode=ParseMode.HTML
         )
     else:
-        # Text filter - parse trigger and response from command
         trigger, response = parse_filter_command(message.text)
         if not trigger or not response:
-            await message.answer("❌ Как гадить?: /filter <trigger> <response>")
+            await message.answer(lang("filter_usage_text"))
             return
         
-        # Check if trigger already exists
         filters = get_chat_filters(message.chat.id)
         for f in filters:
             if f[0] == trigger:
                 await message.answer(lang("already_exists"))
                 return
         
-        # Add filter to database
         add_filter(message.chat.id, trigger, response)
         
-        # Determine filter type
         if trigger.startswith('r"') and trigger.endswith('"'):
-            filter_type = "Regex"
-            clean_trigger = trigger[2:-1]  # Remove r"" wrapping
+            filter_type = lang("regex")
+            clean_trigger = trigger[2:-1]
         else:
-            filter_type = "Text"
+            filter_type = lang("text")
             clean_trigger = trigger
         
         await message.answer(
-            f"✅ <b>{filter_type} Фильтр добавлен!</b>\n\n"
-            f"<b>Trigger:</b> <code>{escape_html(clean_trigger)}</code>\n",
-            # f"<b>Response:</b> {escape_html(response)}",
+            lang("filter_added_text").format(filter_type=filter_type, trigger=escape_html(clean_trigger)),
             parse_mode=ParseMode.HTML
         )
 
 @dp.message(Command("filters"))
 async def cmd_filters(message: Message):
-    """List all filters in the chat"""
     filters = get_chat_filters(message.chat.id)
     if not filters:
         await message.answer(lang("not_exists_filter_all"))
@@ -320,73 +317,56 @@ async def cmd_filters(message: Message):
     
     filters_list = []
     for i, (trigger, response, file_id, file_type) in enumerate(filters, 1):
-        # if trigger.startswith('r"') and trigger.endswith('"'):
-        #     display_trigger = f"Regex: {trigger[2:-1]}"
-        # else:
-        #     display_trigger = f"Text: {trigger}"
         display_trigger = trigger
-        if file_type:
-            display_response = f"[{file_type.capitalize()}]"
-        else:
-            display_response = response
-        
-        # filters_list.append(f"{i}. <code>{escape_html(display_trigger)}</code> → {escape_html(display_response)}")
         filters_list.append(f"<code>{escape_html(display_trigger)}</code>")
     
     filters_list.sort(key=lambda x: x[0])
 
     filters_text = "\n".join(filters_list)
     await message.answer(
-        f"📋 <b>Filters in this chat:</b>\n\n{filters_text}",
+        lang("filters_list").format(filters_text=filters_text),
         parse_mode=ParseMode.HTML
     )
 
 @dp.message(Command("remove_filter"))
 async def cmd_remove_filter(message: Message):
-    """Remove a specific filter"""
-    # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
         await message.answer(lang("no_perm_profile"))
         return
     
-    # Parse command arguments
     parts = message.text.split(' ', 1)
     if len(parts) < 2:
-        await message.answer("❌ Как гадить?: /remove_filter <trigger>")
+        await message.answer(lang("remove_filter_usage"))
         return
     
     trigger = parts[1].strip()
     
-    # Remove filter
     success = remove_filter(message.chat.id, trigger)
     
     if not success:
-        await message.answer("❌ Нету фильтра с таким тригером.")
+        await message.answer(lang("remove_filter_not_found"))
         return
     
-    await message.answer(f"✅ Фильтр рататата: <code>{escape_html(trigger)}</code>", 
+    await message.answer(lang("remove_filter_success").format(trigger=escape_html(trigger)), 
                          parse_mode=ParseMode.HTML)
 
 @dp.message(Command("remove_all_filters"))
 async def cmd_remove_all_filters(message: Message):
-    """Remove all filters in the chat"""
-    # Check if user can change chat info
     if not await user_can_change_info(message.chat.id, message.from_user.id):
         await message.answer(lang("no_perm_profile"))
         return
     
-    # Remove all filters
     count = remove_all_filters(message.chat.id)
     
     if count == 0:
         await message.answer(lang("not_exists_filter_all"))
         return
     
-    await message.answer(f"✅ Ратататат {count}")
+    await message.answer(lang("remove_all_filters_success").format(count=count))
 
 @dp.message(F.text)
 async def message_handler(message: Message):
-    """Handle incoming messages and check against filters"""
+    register_chat(message.chat)
     filters = get_chat_filters(message.chat.id)
     if not filters:
         return
@@ -395,9 +375,8 @@ async def message_handler(message: Message):
     
     for trigger, response, file_id, file_type in filters:
         tragger = trigger.lower()
-        # Handle regex triggers
         if trigger.startswith('r"') and trigger.endswith('"'):
-            pattern = trigger[2:-1]  # Extract pattern from r"pattern"
+            pattern = trigger[2:-1]
             try:
                 if re.search(pattern, message.text or "", re.IGNORECASE):
                     await send_filter_response(message, response, file_id, file_type)
@@ -405,16 +384,12 @@ async def message_handler(message: Message):
             except re.error as e:
                 logger.error(f"Regex error in pattern '{pattern}': {e}")
         
-        # Handle text triggers (case-insensitive)
-        
         elif f" {tragger} " in text or text.startswith(f"{tragger} ") or text.endswith(f" {tragger}") or text == tragger:
             await send_filter_response(message, response, file_id, file_type)
             break
 
 async def send_filter_response(message: Message, response: str, file_id: Optional[str], file_type: Optional[str]):
-    """Send the appropriate response based on filter type"""
     if file_id and file_type:
-        # Media response
         if file_type == 'photo':
             await message.reply_photo(file_id, caption=response if response != "Media response" else None)
         elif file_type == 'video':
@@ -424,11 +399,9 @@ async def send_filter_response(message: Message, response: str, file_id: Optiona
         elif file_type == 'animation':
             await message.reply_animation(file_id, caption=response if response != "Media response" else None)
     else:
-        # Text response
         await message.reply(response)
 
 async def main():
-    """Main function to start the bot"""
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
