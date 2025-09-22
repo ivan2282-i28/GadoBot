@@ -10,7 +10,7 @@ from aiogram.types import Message, ContentType
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
-
+import random
 from translation import translation
 
 # Load environment variables
@@ -168,32 +168,64 @@ def parse_filter_command(text: str) -> tuple:
         
         return trigger, response
 
-@dp.message(Command("start", "help"))
+@dp.message(Command("start"))
 async def cmd_start(message: Message):
     """Handler for /start and /help commands"""
     help_text = (
         "🤖 <b>ГадоБот</b>\n\n"
-        "Киминды:\n"
-        "• /filter [trigger] [response] - Нагадить фильтр\n"
-        "• /filter [trigger] (reply to media) - Нагадить медиа фильтр\n"
-        "• /filters - Список фильтр\n"
-        "• /remove_filter [trigger] - Прогнать гадский фильтр\n"
-        "• /remove_all_filters - рататататата\n\n"
-        "Типы фильтров:\n"
-        "• <code>regex</code> - Гадь r\"pattern\" чтоб regex\n"
-        "• <code>text</code> - Обычный текст(case-insensitive)\n"
-        "• <code>media</code> - Ответь на медию /filter trigger\n\n"
-        "Экзамплес:\n"
-        "• <code>/filter r\"hello|hi\" \"Hey there!\"</code>\n"
-        "• <code>/filter \"thank you\" \"You're welcome!\"</code>\n"
-        "• <code>/filter hello Hello_back!</code>\n"
-        "• Reply to a photo with <code>/filter cat_pic</code>\n\n"
-        "ГадоИнфа:\n"
-        "ГадоЭтот ГадоБот ГадоБыл ГадоСделан ГадоДля ГадоЧата ГадаРотен ГадоХуманете\n"
-        "Под ГадоЛицензитей ГадоАпафь Тву поинт ноль \n"
-        "ГадоСурсы на ГадоХабе: https://github.com/ivan2282-i28/GadoBot"
+        "Данный бот призван заменить PROPIETARY, CLOSED SOURCE, NON FREE тг боты\n"
+        "Powerd by: Raspberry OS Lite, CPython 3.13.7, Aiogram 3\n"
+        "На текущий момент достутпны модули: FILTERS\n"
+        "Будут доступны: MODERATION\n"
+        "Source code avalible at: https://github.com/ivan2282-i28/GadoBot\n"
+        "P.S.: помощь перемешена на /help"
     )
     await message.answer(help_text, parse_mode=ParseMode.HTML)
+
+@dp.message(Command("stats"))
+async def cmd_start(message: Message):
+    """Handler for /start and /help commands"""
+    help_text = (
+        f'[user@gadobot ~]$ gadobotctl stats {message.chat.id}\n'
+        f"Name: {message.chat.full_name}\n"
+        f"Members: {await message.chat.get_member_count()}\n"
+        f"Username: {message.chat.username}"
+    )
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+
+@dp.message(Command("help"))
+async def cmd_start(message: Message):
+    """Handler for /start and /help commands"""
+    if random.random() <= 0.2 or "~misc" in message.text:
+        help_text = (
+            '[user@gadobot ~]$ gadobotctl help MISC.module\n'
+            "Помощь по модуля MISC\n"
+            "COMMANDS:\n"
+            "• /stats_global - Статистика бота [NOT WORKING]\n"
+            "• /stats - Статистика чата\n"
+        )
+    else:
+        help_text = (
+            '[user@gadobot ~]$ gadobotctl help FILTERS.module\n'
+            "Помощь по модуля FILTERS\n"
+            "Киминды:\n"
+            "• /filter [trigger] [response] - Нагадить фильтр\n"
+            "• /filter [trigger] (reply to media) - Нагадить медиа фильтр\n"
+            "• /filters - Список фильтр\n"
+            "• /remove_filter [trigger] - Прогнать гадский фильтр\n"
+            "• /remove_all_filters - рататататата\n\n"
+            "Типы фильтров:\n"
+            "• <code>regex</code> - Гадь r\"pattern\" чтоб regex\n"
+            "• <code>text</code> - Обычный текст(case-insensitive)\n"
+            "• <code>media</code> - Ответь на медию /filter trigger\n\n"
+            "Экзамплес:\n"
+            "• <code>/filter r\"hello|hi\" \"Hey there!\"</code>\n"
+            "• <code>/filter \"thank you\" \"You're welcome!\"</code>\n"
+            "• <code>/filter hello Hello_back!</code>\n"
+            "• Reply to a photo with <code>/filter cat_pic</code>\n\n"
+        )
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+
 
 @dp.message(Command("filter"))
 async def cmd_filter(message: Message):
