@@ -82,7 +82,7 @@ def register_chat(chat : Chat):
     else:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('UPDATE chats SET name = ?, username = ?, ... WHERE chat_id = ?', (chat.full_name, chat.username, chat.id))
+        cursor.execute('UPDATE chats SET name = ?, username = ? WHERE chat_id = ?', (chat.full_name, chat.username, chat.id))
         conn.commit()
         conn.close()
 def get_chat(chat_id : int):
@@ -207,7 +207,7 @@ async def cmd_start(message: Message):
 async def cmd_start(message: Message):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute('SELECT name, username, lang FROM chats ', ())
+    cursor.execute('SELECT chat_id, name, username, lang FROM chats ', ())
     chat = cursor.fetchall()
     conn.close()
     print(chat)
