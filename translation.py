@@ -25,6 +25,9 @@ translation = {
         "global_stats_header": "[user@gadobot ~]$ gadobotctl stats bot",
         "global_stats_chat_count": "Количество чатов",
         "global_stats_header_root": "[root@gadobot ~]# gadobotctl stats bot",
+        "bot_no_perm_restrict_members": "❌ Доступ запрещен: Боту нужны права ограничивать и банить пользователей!",
+        "no_restmem_profile": "❌ У тебя должно быть право ограничивать гадиков",
+        "mention_unreadable":"I'm sure y'know who are {user_id}, but i don't telegram api doesn't give me ability to find gadiks by username("
     },
     "eng": {
         "no_perm_profile": "❌ You must have the right to change chat profile",
@@ -37,7 +40,7 @@ translation = {
         "stats_members": "Members",
         "stats_username": "Username",
         "help_filters": "[user@gadobot ~]$ gadobotctl help FILTERS.module\nHelp for module FILTERS\nCommands:\n• /filter [trigger] [response] - Add filter\n• /filter [trigger] (reply to media) - Add media filter\n• /filters - List filters\n• /remove_filter [trigger] - Remove filter\n• /remove_all_filters - Remove all filters\n\nFilter types:\n• <code>regex</code> - Use r\"pattern\" for regex\n• <code>text</code> - Plain text (case-insensitive)\n• <code>media</code> - Reply to media with /filter trigger\n\nExamples:\n• <code>/filter r\"hello|hi\" \"Hey there!\"</code>\n• <code>/filter \"thank you\" \"You're welcome!\"</code>\n• <code>/filter hello Hello_back!</code>\n• Reply to a photo with <code>/filter cat_pic</code>",
-        "help_misc": "[user@gadobot ~]$ gadobotctl help MISC.module\nHelp for module MISC\nCOMMANDS:\n• /stats_global - Bot statistics [NOT WORKING]\n• /stats - Chat statistics",
+        "help_misc": "[user@gadobot ~]$ gadobotctl help MISC.module\nHelp for module MISC\nCOMMANDS:\n• /stats_global - Bot statistics\n• /stats - Chat statistics",
         "filter_usage_media": "❌ How to use: Reply to media with /filter <trigger>",
         "filter_usage_text": "❌ How to use: /filter <trigger> <response>",
         "filter_added_media": "✅ <b>Filter added!</b>\n\n<b>Trigger:</b> <code>{trigger}</code>\n",
@@ -52,5 +55,11 @@ translation = {
         "global_stats_header": "[user@gadobot ~]$ gadobotctl stats bot",
         "global_stats_chat_count": "Chats count",
         "global_stats_header_root": "[root@gadobot ~]# gadobotctl stats bot",
+        "bot_no_perm_restrict_members": "❌ Access Denined: Bot needs permission to restrict and ban users",
+        "no_restmem_profile": "❌ You must have the right to restrict members",
+        "banned":"[admin@chat.gadobot ~] moderationctl ban {user_id} {timer} {reason} \nOK!",
+        "mention_unreadable":"I'm sure y'know who are {user_id}, but i don't telegram api doesn't give me ability to find gadiks by username(",
+        "help_moderation": "[user@gadobot ~]$ gadobotctl help MODERATION.module\nHelp for module MODERATION\nCOMMANDS:\n• /ban [id] [reason] [time] - Ban member (/ban reason 2232322 this_also_reason 1h tghiss_reason)",
+        "help": "[user@gadobot ~]$ gadobotctl help\n Avalible modules: FILTERS, MISC, MODERATION\n/help -misc",
     }
 }

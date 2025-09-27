@@ -11,6 +11,7 @@ from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 import random
+import time
 from translation import translation
 
 load_dotenv()
@@ -82,7 +83,7 @@ def register_chat(chat : Chat):
     else:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('UPDATE chats SET name = ?, username = ?, ... WHERE chat_id = ?', (chat.full_name, chat.username, chat.id))
+        cursor.execute('UPDATE chats SET name = ?, username = ? WHERE chat_id = ?', (chat.full_name, chat.username, chat.id))
         conn.commit()
         conn.close()
 def get_chat(chat_id : int):
@@ -106,6 +107,20 @@ async def user_can_change_info(chat_id: int, user_id: int, fun: bool) -> bool:
             if member.status == 'creator':
                 return True
             return member.can_change_info if hasattr(member, 'can_change_info') else False
+        return False
+    except Exception as e:
+        logger.error(f"Error checking admin status: {e}")
+        return False
+
+async def user_can_restrict(chat_id: int, user_id: int, fun: bool) -> bool:
+    a = await bot.get_chat_member(chat_id,API_TOKEN.split(":")[0])
+    if not isinstance(a,types.ChatMemberAdministrator) and fun: return True
+    try:
+        member = await bot.get_chat_member(chat_id, user_id)
+        if member.status in ['administrator', 'creator']:
+            if member.status == 'creator':
+                return True
+            return member.can_restrict_members if hasattr(member, 'can_restrict_members') else False
         return False
     except Exception as e:
         logger.error(f"Error checking admin status: {e}")
@@ -211,10 +226,10 @@ async def cmd_start(message: Message):
     chat = cursor.fetchall()
     conn.close()
     print(chat)
-    if "~root" in message.text:
+    if "-root" in message.text:
         if message.from_user.id == 1999559891:
             help_text = (
-                        f'{lang("global_stats_header")}\n'
+                        f'{lang("global_stats_header_root")}\n'
                         f"{lang('global_stats_chat_count')}: {len(chat)}\n"
                         f"{chat}"
             )
@@ -232,10 +247,14 @@ async def cmd_start(message: Message):
 
 @dp.message(Command("help"))
 async def cmd_start(message: Message):
-    if random.random() <= 0.2 or "~misc" in message.text:
+    if "-misc" in message.text:
         help_text = lang("help_misc")
-    else:
+    elif "-filters" in message.text:
         help_text = lang("help_filters")
+    elif "-mod" in message.text:
+        help_text = lang("help_moderation")
+    else:
+        help_text = lang("help")
     await message.answer(help_text, parse_mode=ParseMode.HTML)
 
 
@@ -363,6 +382,59 @@ async def cmd_remove_all_filters(message: Message):
         return
     
     await message.answer(lang("remove_all_filters_success").format(count=count))
+
+@dp.message(Command("ban"))
+async def ban(message: Message):
+    a = await bot.get_chat_member(message.chat.id,API_TOKEN.split(":")[0])
+    if (not a.can_restrict_members): 
+        await message.reply(lang("bot_no_perm_restrict_members"))
+        return
+    if (not await user_can_restrict(message.chat.id,message.from_user.id,False)):
+        await message.reply(lang("no_restmem_profile"))
+        return
+    did_user_id = message.chat.id,message.from_user.id
+    user_id = None
+    reason = None
+    timer = None
+    args = list(message.text.split())
+    args.pop(0)
+    for i,y in enumerate(args):
+        if y.startswith("@"):
+            if user_id == None:
+                user_id = y
+        elif y.isnumeric():
+            if user_id == None or user_id.startswith("@"):
+                user_id = y
+        elif y.endswith("d") and y[:1].isnumeric():
+            timer = 24 * 60 * 60 * int(y[:1])
+        elif y.endswith("h") and y[:1].isnumeric():
+            timer = 60 * 60 * int(y[:1])
+        elif y.endswith("m") and y[:1].isnumeric():
+            timer = 60 *  int(y[:1])
+        else:
+            if reason == None:
+                reason = y
+            else:
+                reason.join(" ",y)
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+    if user_id == None:
+        await message.reply("/dev/null is not a user")
+        return
+    if isinstance(user_id,str):
+        if user_id.startswith("@"):
+            await message.reply(lang("mention_unreadable").format(user_id=user_id))
+            return
+    if timer: timer = time.time() + timer
+    chat_id = message.chat.id
+    await bot.ban_chat_member(message.chat.id,user_id,timer)
+    if timer: timer = f"-time {timer}"
+    else: timer = ""
+    if reason: reason = f"-reason {reason}"
+    else: reason = ""
+    await message.reply(lang("banned").format(did_user_id=did_user_id,user_id=user_id,timer=timer,reason=reason,chat_id=chat_id))
+    
+
 
 @dp.message(F.text)
 async def message_handler(message: Message):
