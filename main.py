@@ -222,7 +222,7 @@ async def cmd_start(message: Message):
 async def cmd_start(message: Message):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute('SELECT name, username, lang FROM chats ', ())
+    cursor.execute('SELECT chat_id, name, username, lang FROM chats ', ())
     chat = cursor.fetchall()
     conn.close()
     print(chat)
