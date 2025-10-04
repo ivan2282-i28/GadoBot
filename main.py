@@ -434,7 +434,51 @@ async def ban(message: Message):
     else: reason = ""
     await message.reply(lang("banned").format(did_user_id=did_user_id,user_id=user_id,timer=timer,reason=reason,chat_id=chat_id))
     
+@dp.message(Command("export"))
+async def exportcmd(message: Message):
+    filters = get_chat_filters(message.chat.id)
+    fstr = ""
+    for trigger, response, file_id, file_type in filters:
+        fstr += f"~{trigger};{response};{file_id};{file_type}"
+    await message.answer(f"GBTP001:GADOBOT Transmit Protocol v0.0.1\nBEGIN\n{fstr}")
 
+@dp.message(Command("import"))
+async def importcmd(message: Message):
+    member = await bot.get_chat_member(message.chat.id,message.from_user.id)
+    if isinstance(member,types.ChatMemberOwner):
+        if "WRITE" in message.text:
+            try:
+                first_newline_index = message.text.find('\n')
+                payload_fake = message.text[first_newline_index + 1:]
+                if payload_fake.startswith("GBTP001"):
+                    payload_fake = payload_fake.split("BEGIN")
+                    payload_fake = payload_fake[1]
+                    payload_fake = payload_fake.split("~")
+                    payload_fake.pop(0)
+                    payload_real = []
+                    for i in payload_fake:
+                        pload = i.split(";")
+                        if pload[1] == "None":
+                            pload[1] = None
+                        if pload[2] == "None":
+                            pload[2] = None
+                        if pload[3] == "None":
+                            pload[3] = None
+                        payload_real.append((pload[0],pload[1],pload[2],pload[3]))
+                    remove_all_filters(message.chat.id)
+                    for i in payload_real:
+                        add_filter(message.chat.id,i[0],i[1],i[2],i[3])
+                    await message.answer("GBTP MANAGMENT SYSTEM: OK")
+                else:
+                    await message.answer("GBTP MANAGMENT SYSTEM:\nThis GBTP type is not supported")
+            except Exception as e:
+                await message.answer("GBTP MANAGMENT SYSTEM: Unknown error!\nYour chat db was wiped for stability:3")
+                print(e)
+                remove_all_filters(message.chat.id)
+        else:
+            await message.answer("GBTP MANAGMENT SYSTEM:\nAttention this feature is experemental and unstable!\nVER: v0.0.1 (GDTP001)\nhow to use: \"/import WRITE\nGDTP001:...\"")
+    else:
+        await message.answer("GBTP MANAGMENT SYSTEM: NOT ENOUGH RIGHTS")
 
 @dp.message(F.text)
 async def message_handler(message: Message):
@@ -472,6 +516,8 @@ async def send_filter_response(message: Message, response: str, file_id: Optiona
             await message.reply_animation(file_id, caption=response if response != "Media response" else None)
     else:
         await message.reply(response)
+
+
 
 async def main():
     await dp.start_polling(bot)
