@@ -350,7 +350,7 @@ async def cmd_filters(message: Message):
 
 @dp.message(Command("remove_filter"))
 async def cmd_remove_filter(message: Message):
-    if not await user_can_change_info(message.chat.id, message.from_user.id):
+    if not await user_can_change_info(message.chat.id, message.from_user.id,True):
         await message.answer(lang("no_perm_profile"))
         return
     
@@ -372,7 +372,7 @@ async def cmd_remove_filter(message: Message):
 
 @dp.message(Command("remove_all_filters"))
 async def cmd_remove_all_filters(message: Message):
-    if not await user_can_change_info(message.chat.id, message.from_user.id):
+    if not await user_can_change_info(message.chat.id, message.from_user.id,True):
         await message.answer(lang("no_perm_profile"))
         return
     
@@ -444,7 +444,7 @@ async def exportcmd(message: Message):
     
     file_content = f"GBTP001:GADOBOT Transmit Protocol v0.0.1\nBEGIN\n{fstr}"
     file_io = BytesIO(file_content.encode())
-    file_io.name = f"gadobot_backup_{message.chat.id}_{int(time.time())}.gtbp"
+    file_io.name = f"gadobot_backup_{message.chat.id}_{int(time.time())}.gbtp"
     
     await message.answer_document(
         document=types.BufferedInputFile(file_content.encode(), filename=file_io.name),
@@ -469,7 +469,7 @@ async def importcmd(message: Message):
         return
 
 
-    if not message.document.file_name.endswith('.gtbp'):
+    if not message.document.file_name.endswith('.gbtp'):
         await message.answer("GBTP MANAGMENT SYSTEM: Invalid file format. Please use .gtbp backup files")
         return
 
