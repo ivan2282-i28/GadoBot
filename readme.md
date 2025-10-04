@@ -17,18 +17,6 @@ You can use official bot [@GadoGadBot](https://t.me/gadogadbot)
 3. Check if anything added to section ```How to install?```  
 4. And run your bot using ```python main.py```
 ## How to migrate (EXPEREMENTAL)?
-1. Use command ```/export``` in your pervious bot  
- you wiil get something like:
- ```GBTP001
- GBTP001:GadoBot Transmit Protocol v0.0.1
- BEGIN
- ...
+1. Use command ```/export``` in your pervious bot  you will get file attached
  ```
-2. Use command ```/import``` in your new bot (ONLY OWNER CAN DO IT)  
-like this:
-```telegram
-/import WRITE
- GBTP001:GadoBot Transmit Protocol v0.0.1
- BEGIN
- ...
- ```
+2. Use command ```/import``` in your new bot (ONLY OWNER CAN DO IT) and attach file

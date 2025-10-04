@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import random
 import time
 from translation import translation
+from io import BytesIO
 
 load_dotenv()
 
@@ -439,46 +440,78 @@ async def exportcmd(message: Message):
     filters = get_chat_filters(message.chat.id)
     fstr = ""
     for trigger, response, file_id, file_type in filters:
-        fstr += f"~{trigger};{response};{file_id};{file_type}"
-    await message.answer(f"GBTP001:GADOBOT Transmit Protocol v0.0.1\nBEGIN\n{fstr}")
+        fstr += f"~{trigger};{response};{file_id};{file_type}\n"
+    
+    file_content = f"GBTP001:GADOBOT Transmit Protocol v0.0.1\nBEGIN\n{fstr}"
+    file_io = BytesIO(file_content.encode())
+    file_io.name = f"gadobot_backup_{message.chat.id}_{int(time.time())}.gtbp"
+    
+    await message.answer_document(
+        document=types.BufferedInputFile(file_content.encode(), filename=file_io.name),
+        caption="GBTP001: Backup file generated"
+    )
 
 @dp.message(Command("import"))
 async def importcmd(message: Message):
-    member = await bot.get_chat_member(message.chat.id,message.from_user.id)
-    if isinstance(member,types.ChatMemberOwner):
-        if "WRITE" in message.text:
-            try:
-                first_newline_index = message.text.find('\n')
-                payload_fake = message.text[first_newline_index + 1:]
-                if payload_fake.startswith("GBTP001"):
-                    payload_fake = payload_fake.split("BEGIN")
-                    payload_fake = payload_fake[1]
-                    payload_fake = payload_fake.split("~")
-                    payload_fake.pop(0)
-                    payload_real = []
-                    for i in payload_fake:
-                        pload = i.split(";")
-                        if pload[1] == "None":
-                            pload[1] = None
-                        if pload[2] == "None":
-                            pload[2] = None
-                        if pload[3] == "None":
-                            pload[3] = None
-                        payload_real.append((pload[0],pload[1],pload[2],pload[3]))
-                    remove_all_filters(message.chat.id)
-                    for i in payload_real:
-                        add_filter(message.chat.id,i[0],i[1],i[2],i[3])
-                    await message.answer("GBTP MANAGMENT SYSTEM: OK")
-                else:
-                    await message.answer("GBTP MANAGMENT SYSTEM:\nThis GBTP type is not supported")
-            except Exception as e:
-                await message.answer("GBTP MANAGMENT SYSTEM: Unknown error!\nYour chat db was wiped for stability:3")
-                print(e)
-                remove_all_filters(message.chat.id)
-        else:
-            await message.answer("GBTP MANAGMENT SYSTEM:\nAttention this feature is experemental and unstable!\nVER: v0.0.1 (GDTP001)\nhow to use: \"/import WRITE\nGDTP001:...\"")
-    else:
+    member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+    
+    if not isinstance(member, types.ChatMemberOwner):
         await message.answer("GBTP MANAGMENT SYSTEM: NOT ENOUGH RIGHTS")
+        return
+
+    
+    if not message.document:
+        await message.answer(
+            "GBTP MANAGMENT SYSTEM:\n"
+            "Please attach a backup file to import.\n"
+            "How to use: Reply to this message with /import and attach the .gtbp file"
+        )
+        return
+
+
+    if not message.document.file_name.endswith('.gtbp'):
+        await message.answer("GBTP MANAGMENT SYSTEM: Invalid file format. Please use .gtbp backup files")
+        return
+
+    try:
+
+        file_info = await bot.get_file(message.document.file_id)
+        downloaded_file = await bot.download_file(file_info.file_path)
+        
+
+        file_content = downloaded_file.read().decode('utf-8')
+        
+
+        if file_content.startswith("GBTP001"):
+            payload_parts = file_content.split("BEGIN")
+            if len(payload_parts) < 2:
+                raise ValueError("Invalid file format: BEGIN section missing")
+                
+            payload_fake = payload_parts[1].strip()
+            payload_fake = payload_fake.split("~")
+            payload_fake = [p for p in payload_fake if p.strip()]  # Remove empty strings
+            
+            payload_real = []
+            for i in payload_fake:
+                pload = i.split(";")
+                if len(pload) != 4:
+                    continue  
+                    
+                pload = [None if item == "None" else item for item in pload]
+                payload_real.append((pload[0], pload[1], pload[2], pload[3]))
+            
+            remove_all_filters(message.chat.id)
+            for trigger, response, file_id, file_type in payload_real:
+                add_filter(message.chat.id, trigger, response, file_id, file_type)
+            
+            await message.answer("GBTP MANAGMENT SYSTEM: Import successful!")
+        else:
+            await message.answer("GBTP MANAGMENT SYSTEM: This GBTP type is not supported")
+            
+    except Exception as e:
+        await message.answer("GBTP MANAGMENT SYSTEM: Import failed! Your chat db was wiped for stability:3")
+        print(f"Import error: {e}")
+        remove_all_filters(message.chat.id)
 
 @dp.message(F.text)
 async def message_handler(message: Message):
