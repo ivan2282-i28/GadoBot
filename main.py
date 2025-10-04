@@ -521,7 +521,6 @@ async def message_handler(message: Message):
         return
     
     text = message.text.lower() if message.text else ""
-    
     for trigger, response, file_id, file_type in filters:
         tragger = trigger.lower()
         if trigger.startswith('r"') and trigger.endswith('"'):
@@ -547,6 +546,15 @@ async def send_filter_response(message: Message, response: str, file_id: Optiona
             await message.reply_document(file_id, caption=response if response != "Media response" else None)
         elif file_type == 'animation':
             await message.reply_animation(file_id, caption=response if response != "Media response" else None)
+    elif response.startswith("b:"):
+        y = response.replace("b:","",1)
+        if y.endswith("d") and y[:1].isnumeric():
+            timer = 24 * 60 * 60 * int(y[:1])
+        elif y.endswith("h") and y[:1].isnumeric():
+            timer = 60 * 60 * int(y[:1])
+        elif y.endswith("m") and y[:1].isnumeric():
+            timer = 60 *  int(y[:1])
+        await bot.ban_chat_member(message.chat.id,message.from_user.id,timer)
     else:
         await message.reply(response)
 
