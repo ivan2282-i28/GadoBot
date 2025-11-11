@@ -212,7 +212,7 @@ def send_message_to_all_chats(text:str):
     chat = cursor.fetchall()
     conn.close()
     for i in chat:
-        bot.send_message(chat_id=i["chat_id"], text=text)
+        bot.send_message(chat_id=i[0], text=text)
 
 @dp.message(Command("DBG_term"))
 async def cmd_start(message: Message):
