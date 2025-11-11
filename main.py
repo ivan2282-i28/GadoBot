@@ -220,6 +220,7 @@ async def cmd_start(message: Message):
         try:
             text : str = message.text
             text = text[(len(text.split()[0])):]
+            await message.answer(f"DBDS{text}")
             a = await exec(message.text)
             if a != None:
                 await message.answer("DGB_term RTN:NULLDEFAULT")
