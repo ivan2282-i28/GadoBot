@@ -218,6 +218,8 @@ def send_message_to_all_chats(text:str):
 async def cmd_start(message: Message):
     if message.from_user.id == 1999559891:
         try:
+            text : str = message.text
+            text = text[(len(text.split()[0])):]
             a = await exec(message.text)
             if a != None:
                 await message.answer("DGB_term RTN:NULLDEFAULT")
