@@ -225,8 +225,9 @@ async def cmd_start(message: Message):
                 await message.answer("DGB_term RTN:NULLDEFAULT")
             else:
                 await message.answer(a)
-        except:
-            await message.answer("DBG_term: FAIL")
+        except Exception as e:
+            await message.answer(f"DBG_term: FAIL,{e}")
+            logger.error("Dear hypervisor someone is fucking stupid",exc_info=True)
     else:
         message.answer("Enivroiment Variable DEBUG_ENABLED is not set or set to false")
 
