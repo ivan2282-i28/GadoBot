@@ -217,20 +217,15 @@ async def send_message_to_all_chats(text:str):
     for i in chat:
         await bot.send_message(chat_id=i[0], text=text)
 
-@dp.message(Command("DBG_term"))
+@dp.message(Command("ADM_send"))
 async def cmd_start(message: Message):
     if message.from_user.id == 1999559891:
-        try:
-            text : str = message.text
-            text = text[(len(text.split()[0])+1):]
-            exec(text)
-        except Exception as e:
-            await message.answer(f"FAIL {e}")
-            logger.error("Dear hypervisor someone is fucking stupid",exc_info=True)
-        finally:
-            await message.answer("OK")
+        text : str = message.text
+        text = text[(len(text.split()[0])+1):]
+        await send_message_to_all_chats(text)
+        await message.answer("OK")
     else:
-        message.answer("Enivroiment Variable DEBUG_ENABLED is not set or set to false")
+        message.answer("Who are YOU?")
 
 
 @dp.message(Command("start"))
