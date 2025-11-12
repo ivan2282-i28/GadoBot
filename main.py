@@ -213,7 +213,7 @@ def get_all_chats():
     return chat
 
 async def send_message_to_all_chats(text:str):
-    chat = await get_all_chats()
+    chat = get_all_chats()
     for i in chat:
         await bot.send_message(chat_id=i[0], text=text)
 
