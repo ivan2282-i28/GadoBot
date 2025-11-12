@@ -204,7 +204,7 @@ def parse_filter_command(text: str) -> tuple:
         
         return trigger, response
 
-def get_all_chats();
+def get_all_chats()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT chat_id, name, username, lang FROM chats ', ())
