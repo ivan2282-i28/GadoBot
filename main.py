@@ -204,15 +204,18 @@ def parse_filter_command(text: str) -> tuple:
         
         return trigger, response
 
-
-def send_message_to_all_chats(text:str):
+def get_all_chats();
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT chat_id, name, username, lang FROM chats ', ())
     chat = cursor.fetchall()
     conn.close()
+    return chat
+
+async def send_message_to_all_chats(text:str):
+    chat = await get_all_chats()
     for i in chat:
-        bot.send_message(chat_id=i[0], text=text)
+        await bot.send_message(chat_id=i[0], text=text)
 
 @dp.message(Command("DBG_term"))
 async def cmd_start(message: Message):
