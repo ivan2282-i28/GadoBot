@@ -23,7 +23,7 @@ cards = {
     4: (4, "пернулканик", "cards/pernelkanic.jpg"),
     5: (5, "Флоппи картачка", "cards/flopi.jpg"),
     6: (5, "Ротен Хуманите", "cards/rotor.jpg"),
-    7: (4, "Силли фембой\n@Ink_dev", "cards/rotor.jpg"),
+    7: (4, "Силли фембой\n@Ink_dev", "cards/inkdev.jpg"),
 }
 
 logging.basicConfig(
