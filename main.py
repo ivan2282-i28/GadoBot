@@ -575,6 +575,72 @@ async def cmd_adm_add_card(message: Message):
     except Exception as e:
         await message.answer(f"Error adding card: {e}")
 
+@dp.message(Command("ADM_give_card"))
+async def cmd_adm_give_card(message: Message):
+    """
+    Admin command to give a specific card to a user
+    Usage: /ADM_give_card <user_id> <card_id>
+    """
+    if message.from_user.id != 1999559891:
+        await message.answer("Who are YOU?")
+        return
+    
+    try:
+        parts = message.text.split()
+        if len(parts) < 3:
+            await message.answer(
+                "Usage: /ADM_give_card <user_id> <card_id>\n\n"
+                "Available cards:\n" +
+                "\n".join([f"{card_id}: {card_data[1]} (Rarity: {card_data[0]})" 
+                          for card_id, card_data in cards.items()])
+            )
+            return
+        
+        user_id = int(parts[1])
+        card_id = int(parts[2])
+        
+        # Check if card exists
+        if card_id not in cards:
+            await message.answer(
+                f"Card ID {card_id} not found!\n\n"
+                "Available cards:\n" +
+                "\n".join([f"{card_id}: {card_data[1]} (Rarity: {card_data[0]})" 
+                          for card_id, card_data in cards.items()])
+            )
+            return
+        
+        # Check if user exists, if not register them
+        await register_user(user_id)
+        
+        # Add card to user's collection
+        await add_user_card(user_id, card_id)
+        
+        card_data = cards[card_id]
+        await message.answer(
+            f"✅ Card given successfully!\n"
+            f"User: {user_id}\n"
+            f"Card: {card_data[1]} (ID: {card_id})\n"
+            f"Rarity: {card_data[0]}"
+        )
+        
+        # Optional: Notify the user if they are in a chat with the bot
+        try:
+            user_cards_count = await get_user_cards_count(user_id)
+            await bot.send_message(
+                user_id,
+                f"🎉 You received a new card from an admin!\n"
+                f"🎴 {card_data[1]}\n"
+                f"⭐ Rarity: {card_data[0]}\n"
+                f"📊 Your total cards: {user_cards_count}"
+            )
+        except Exception as e:
+            logger.warning(f"Could not notify user {user_id}: {e}")
+    
+    except ValueError:
+        await message.answer("Error: user_id and card_id must be numbers!")
+    except Exception as e:
+        await message.answer(f"Error giving card: {e}")
+
 @dp.message(Command("ADM_remove_card"))
 async def cmd_adm_remove_card(message: Message):
     if message.from_user.id != 1999559891:
