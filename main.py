@@ -6,7 +6,7 @@ import html
 from typing import Dict, List, Tuple, Union, Optional
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile
+from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile, InputMediaPhoto
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
@@ -14,7 +14,6 @@ import random
 import time
 from translation import translation
 from io import BytesIO
-
 load_dotenv()
 
 db_path = "gado.db"
@@ -390,9 +389,9 @@ async def send_card_with_image(chat_id: int, card_data: tuple, caption: str = No
 async def show_card_page(message: Union[Message, CallbackQuery], user_id: int, page_index: int):
     if user_id not in user_pagination:
         if isinstance(message, Message):
-            await message.answer("Your session expired. Use /sc again.")
+            await message.reply("Your session expired. Use /sc again.")
         else:
-            await message.answer("Your session expired. Use /sc again.")
+            await message.reply("Your session expired. Use /sc again.")
         return
     
     pagination_data = user_pagination[user_id]
@@ -466,9 +465,9 @@ async def show_card_page(message: Union[Message, CallbackQuery], user_id: int, p
         # For new messages, send the card with image and navigation
         if actual_path:
             input_file = FSInputFile(actual_path)
-            sent_message = await message.answer_photo(input_file, caption=caption, reply_markup=builder.as_markup())
+            sent_message = await message.reply_photo(input_file, caption=caption, reply_markup=builder.as_markup())
         else:
-            sent_message = await message.answer(f"📄 {caption}\n(Image not found)", reply_markup=builder.as_markup())
+            sent_message = await message.reply(f"📄 {caption}\n(Image not found)", reply_markup=builder.as_markup())
         
         # Store the message ID for future edits
         user_pagination[user_id]['message_id'] = sent_message.message_id
@@ -488,7 +487,7 @@ async def cmd_roll_card(message: Message):
         hours = cooldown_remaining // 3600
         minutes = (cooldown_remaining % 3600) // 60
         
-        await message.answer(
+        await message.reply(
             f"⏰ Please wait {hours}h {minutes}m before rolling again!"
         )
         return
@@ -513,7 +512,7 @@ async def cmd_see_cards(message: Message):
     user_cards = await get_all_cards(user_id)
     
     if not user_cards:
-        await message.answer("You don't have any cards yet! Use /rc to roll your first card.")
+        await message.reply("You don't have any cards yet! Use /rc to roll your first card.")
         return
     
     total_cards = len(user_cards)
