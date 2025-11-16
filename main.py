@@ -6,7 +6,7 @@ import html
 from typing import Dict, List, Tuple, Union, Optional
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile
+from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile, InputMediaPhoto
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
@@ -23,7 +23,8 @@ cards = {
     3: (4, "назови", "cards/nazovi.png"),
     4: (4, "пернулканик", "cards/pernelkanic.jpg"),
     5: (5, "Флоппи картачка", "cards/flopi.jpg"),
-    6: (5, "Ротен Хуманите", "cards/rotor.jpg")
+    6: (5, "Ротен Хуманите", "cards/rotor.jpg"),
+    7: (4, "Силли фембой\n@Ink_dev\n", "cards/inkdev.jpg"),
 }
 logging.basicConfig(
     level=logging.INFO,
@@ -373,7 +374,6 @@ async def send_card_with_image(chat_id: int, card_data: tuple, caption: str = No
         if actual_path:
             logger.info(f"Sending card image from: {actual_path}")
             # Use FSInputFile for file system paths
-            from aiogram.types import FSInputFile
             input_file = FSInputFile(actual_path)
             await bot.send_photo(chat_id, input_file, caption=caption)
         else:
@@ -385,6 +385,95 @@ async def send_card_with_image(chat_id: int, card_data: tuple, caption: str = No
         logger.error(f"Error sending card image: {e}")
         # Fallback to text message if image fails
         await bot.send_message(chat_id, caption)
+
+async def show_card_page(message: Union[Message, CallbackQuery], user_id: int, page_index: int):
+    if user_id not in user_pagination:
+        if isinstance(message, Message):
+            await message.answer("Your session expired. Use /sc again.")
+        else:
+            await message.answer("Your session expired. Use /sc again.")
+        return
+    
+    pagination_data = user_pagination[user_id]
+    cards_list = pagination_data['cards']
+    total_pages = pagination_data['total']
+    
+    if page_index < 0 or page_index >= total_pages:
+        page_index = 0
+    
+    card_id = cards_list[page_index]
+    card_data = cards.get(card_id, (0, "Unknown Card", ""))
+    
+    # Create navigation keyboard
+    builder = InlineKeyboardBuilder()
+    
+    # Previous button
+    if page_index > 0:
+        builder.add(types.InlineKeyboardButton(
+            text="<", 
+            callback_data=f"card_nav:{user_id}:{page_index-1}"
+        ))
+    
+    # Page indicator
+    builder.add(types.InlineKeyboardButton(
+        text=f"{page_index + 1}/{total_pages}", 
+        callback_data="card_page:current"
+    ))
+    
+    # Next button
+    if page_index < total_pages - 1:
+        builder.add(types.InlineKeyboardButton(
+            text=">", 
+            callback_data=f"card_nav:{user_id}:{page_index+1}"
+        ))
+    
+    # Combined caption with navigation info
+    caption = f"🎴 {card_data[1]}\nRarity: {card_data[0]}\n\nPage {page_index + 1} of {total_pages}"
+    
+    # Check if image exists
+    image_path = card_data[2]
+    possible_paths = [
+        image_path,
+        f"./{image_path}",
+        f"./cards/{os.path.basename(image_path)}",
+        f"cards/{os.path.basename(image_path)}",
+        os.path.join("cards", os.path.basename(image_path)),
+        os.path.join("./cards", os.path.basename(image_path))
+    ]
+    
+    actual_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            actual_path = path
+            break
+    
+    if isinstance(message, CallbackQuery):
+        # For callback queries, edit the existing message
+        try:
+            if actual_path:
+                # Edit both photo and caption
+                input_file = FSInputFile(actual_path)
+                media = InputMediaPhoto(media=input_file, caption=caption)
+                await message.message.edit_media(media=media, reply_markup=builder.as_markup())
+            else:
+                # If no image, edit just the caption and buttons
+                await message.message.edit_caption(caption=caption, reply_markup=builder.as_markup())
+        except Exception as e:
+            logger.error(f"Error editing card message: {e}")
+            await message.answer("Error updating card view")
+    else:
+        # For new messages, send the card with image and navigation
+        if actual_path:
+            input_file = FSInputFile(actual_path)
+            sent_message = await message.answer_photo(input_file, caption=caption, reply_markup=builder.as_markup())
+        else:
+            sent_message = await message.answer(f"📄 {caption}\n(Image not found)", reply_markup=builder.as_markup())
+        
+        # Store the message ID for future edits
+        user_pagination[user_id]['message_id'] = sent_message.message_id
+    
+    # Update current index
+    user_pagination[user_id]['current_index'] = page_index
 
 @dp.message(Command("rc", "roll-card", "rollcard"))
 async def cmd_roll_card(message: Message):
@@ -435,69 +524,6 @@ async def cmd_see_cards(message: Message):
     
     await show_card_page(message, user_id, 0)
 
-async def show_card_page(message: Union[Message, CallbackQuery], user_id: int, page_index: int):
-    if user_id not in user_pagination:
-        if isinstance(message, Message):
-            await message.answer("Your session expired. Use /sc again.")
-        else:
-            await message.answer("Your session expired. Use /sc again.")
-        return
-    
-    pagination_data = user_pagination[user_id]
-    cards_list = pagination_data['cards']
-    total_pages = pagination_data['total']
-    
-    if page_index < 0 or page_index >= total_pages:
-        page_index = 0
-    
-    card_id = cards_list[page_index]
-    card_data = cards.get(card_id, (0, "Unknown Card", ""))
-    
-    # Create navigation keyboard
-    builder = InlineKeyboardBuilder()
-    
-    # Previous button
-    if page_index > 0:
-        builder.add(types.InlineKeyboardButton(
-            text="<", 
-            callback_data=f"card_nav:{user_id}:{page_index-1}"
-        ))
-    
-    # Page indicator
-    builder.add(types.InlineKeyboardButton(
-        text=f"{page_index + 1}/{total_pages}", 
-        callback_data="card_page:current"
-    ))
-    
-    # Next button
-    if page_index < total_pages - 1:
-        builder.add(types.InlineKeyboardButton(
-            text=">", 
-            callback_data=f"card_nav:{user_id}:{page_index+1}"
-        ))
-    
-    caption = f"🎴 {card_data[1]}\nRarity: {card_data[0]}"
-    
-    if isinstance(message, CallbackQuery):
-        # For callback queries, delete old message and send new one
-        try:
-            await message.message.delete()
-        except Exception as e:
-            logger.warning(f"Could not delete message: {e}")
-        
-        await send_card_with_image(message.from_user.id, card_data, caption)
-        await bot.send_message(
-            message.from_user.id,
-            "Navigation:",
-            reply_markup=builder.as_markup()
-        )
-    else:
-        await send_card_with_image(message.chat.id, card_data, caption)
-        await message.answer("Navigation:", reply_markup=builder.as_markup())
-    
-    # Update current index
-    user_pagination[user_id]['current_index'] = page_index
-
 @dp.callback_query(F.data.startswith("card_nav:"))
 async def handle_card_navigation(callback: CallbackQuery):
     data_parts = callback.data.split(":")
@@ -519,6 +545,8 @@ async def handle_card_navigation(callback: CallbackQuery):
 @dp.callback_query(F.data == "card_page:current")
 async def handle_current_page(callback: CallbackQuery):
     await callback.answer(f"Page {user_pagination.get(callback.from_user.id, {}).get('current_index', 0) + 1}")
+
+# ... (rest of the admin commands and other functions remain the same)
 
 # Admin commands
 @dp.message(Command("ADM_add_card"))
