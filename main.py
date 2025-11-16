@@ -6,7 +6,7 @@ import html
 from typing import Dict, List, Tuple, Union, Optional
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile, InputMediaPhoto
+from aiogram.types import Message, ContentType, Chat, CallbackQuery, FSInputFile
 from aiogram.enums import ParseMode
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
@@ -24,8 +24,9 @@ cards = {
     4: (4, "пернулканик", "cards/pernelkanic.jpg"),
     5: (5, "Флоппи картачка", "cards/flopi.jpg"),
     6: (5, "Ротен Хуманите", "cards/rotor.jpg"),
-    7: (4, "Силли фембой\n@Ink_dev\n", "cards/inkdev.jpg"),
+    7: (4, "Силли фембой\n@Ink_dev", "cards/rotor.jpg"),
 }
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -546,8 +547,6 @@ async def handle_card_navigation(callback: CallbackQuery):
 async def handle_current_page(callback: CallbackQuery):
     await callback.answer(f"Page {user_pagination.get(callback.from_user.id, {}).get('current_index', 0) + 1}")
 
-# ... (rest of the admin commands and other functions remain the same)
-
 # Admin commands
 @dp.message(Command("ADM_add_card"))
 async def cmd_adm_add_card(message: Message):
@@ -686,6 +685,22 @@ async def cmd_adm_check_images(message: Message):
         image_status += "\n"
     
     await message.answer(image_status)
+
+@dp.message(Command("ADM_send"))
+async def cmd_adm_send(message: Message):
+    if message.from_user.id == 1999559891:
+        text = message.text
+        text = text[(len(text.split()[0]) + 1):]
+        await send_message_to_all_chats(text)
+        await message.answer("OK")
+    else:
+        await message.answer("Who are YOU?")
+
+@dp.message(Command("start"))
+async def cmd_start(message: Message):
+    help_text = lang("start_message")
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+
 
 @dp.message(Command("ADM_send"))
 async def cmd_adm_send(message: Message):
