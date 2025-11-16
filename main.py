@@ -215,7 +215,10 @@ def get_all_chats():
 async def send_message_to_all_chats(text:str):
     chat = get_all_chats()
     for i in chat:
-        await bot.send_message(chat_id=i[0], text=text)
+        try:
+            await bot.send_message(chat_id=i[0], text=text)
+        except:
+            pass
 
 @dp.message(Command("ADM_send"))
 async def cmd_start(message: Message):
