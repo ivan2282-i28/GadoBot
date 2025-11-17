@@ -1,6 +1,6 @@
 # GadoBot >:3
 
-https://github.com/ivan2282-i28/GadoBot/raw/main/cat-insane-monjjunirawr.mp4
+![cat-insane-monjjunirawr.mp4](md/cat-insane-monjjunirawr.gif)
 
 I'm GadoBot  
 You can use official bot [@GadoGadBot](https://t.me/gadogadbot)
