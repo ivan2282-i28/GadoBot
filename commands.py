@@ -6,7 +6,7 @@ import re
 import subprocess
 import time
 from typing import Callable
-
+import asyncio
 import aiosqlite
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.enums import ParseMode
@@ -269,9 +269,7 @@ def register_handlers(bot: Bot, dp: Dispatcher, api_token: str) -> None:
         next_roll_time = current_time + 4 * 60 * 60
         await update_user_cooldown(message.from_user.id, next_roll_time)
 
-        if final_card_id != original_card_id:
-            await message.answer("🎲 Duplicate card detected! Re-rolling...")
-            await asyncio.sleep(1)
+
 
         await send_card_with_image(bot, message.chat.id, final_card_data)
 

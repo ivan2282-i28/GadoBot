@@ -27,8 +27,11 @@ cards: Dict[int, Tuple[int, str, str]] = {
     7: (4, "Силли фембой\n@Ink_dev", "cards/inkdev.jpg"),
     8: (4, "Клоки (спонсор флоппи картачки)", "cards/kloki.png"),
     9: (4, "Злойтера", "cards/systemdboot.jpg"),
-    10: (4, "FB2 _ZaZuZaZi_\n@Flesxka", "cards/IOR.png"),
     10: (4, "Андрев Линолиум", "cards/linolium.jpg"),
+    11: (4, "FB2 _ZaZuZaZi_\n@Flesxka", "cards/IOR.png"),
+    12: (4, "Рефакторатор гадабота\n@faustyu", "cards/IOR.png"),
+    13: (6, "GadoBot\nGBTP: Transmission failed, reason: remote server dropped connection, error: RDC","cards/rotor.jpg"),
+    14: (0, "Null")
 }
 
 # Pagination state per user
