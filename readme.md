@@ -13,7 +13,7 @@ You can use official bot [@GadoGadBot](https://t.me/gadogadbot)
 3. Run ```pip install -r requirements.txt``` in your venv
 4. Copy .env_template to .env
 5. Change BOT_TOKEN to token you obtained from @BotFather
-6. Run your bot using ```pip install -r requirements.txt```
+6. Run your bot using ```python main.py```
 ## How to update?
 1. Run ```git pull```
 2. Run ```pip install -r requirements.txt```
