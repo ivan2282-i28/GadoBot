@@ -24,6 +24,12 @@ cards = {
     5: (5, "Флоппи картачка", "cards/flopi.jpg"),
     6: (5, "Ротен Хуманите", "cards/rotor.jpg"),
     7: (4, "Силли фембой\n@Ink_dev", "cards/inkdev.jpg"),
+    8: (4, "Клоки (спонсор флоппи картачки)", "cards/kloki.png"),
+    9: (4, "Злойтера", "cards/systemdboot.jpg"),
+    10: (4, "FB2 _ZaZuZaZi_\n@Flesxka", "cards/IOR.png"),
+    10: (4, "Андрев Линолиум", "cards/linolium.jpg"),
+
+
 }
 
 logging.basicConfig(
@@ -85,6 +91,11 @@ async def init_db():
         )
         ''')
         await conn.commit()
+    
+    # Check and re-roll duplicate cards on startup
+    rerolled_count = await check_and_reroll_duplicate_cards()
+    if rerolled_count > 0:
+        logger.info(f"Re-rolled {rerolled_count} duplicate cards during startup")
 
 async def register_chat(chat: Chat):
     async with aiosqlite.connect(db_path) as conn:
@@ -131,13 +142,8 @@ async def get_chat(chat_id: int):
         return chat
 
 async def get_all_cards(user_id: int):
-    async with aiosqlite.connect(db_path) as conn:
-        cursor = await conn.execute(
-            'SELECT card_id FROM cards WHERE user_id = ? ORDER BY created_at DESC', 
-            (user_id,)
-        )
-        user_cards = await cursor.fetchall()
-        return [card[0] for card in user_cards]
+    """Get all unique cards for user (alias for get_user_unique_cards)"""
+    return await get_user_unique_cards(user_id)
 
 async def get_user_cards_count(user_id: int):
     async with aiosqlite.connect(db_path) as conn:
@@ -166,12 +172,107 @@ async def update_user_cooldown(user_id: int, cooldown: int):
         await conn.commit()
 
 async def add_user_card(user_id: int, card_id: int):
+    """Add a card to user's collection and re-roll if it's a duplicate"""
     async with aiosqlite.connect(db_path) as conn:
+        # Check if user already has this card
+        cursor = await conn.execute(
+            'SELECT id FROM cards WHERE user_id = ? AND card_id = ?', 
+            (user_id, card_id)
+        )
+        existing = await cursor.fetchone()
+        
+        if existing:
+            # User already has this card - re-roll to a different one
+            await conn.execute(
+                'INSERT INTO cards (user_id, card_id) VALUES (?, ?)', 
+                (user_id, card_id)
+            )
+            await conn.commit()
+            
+            # Get user's current cards to find available ones
+            user_cards = await get_user_unique_cards(user_id)
+            all_card_ids = list(cards.keys())
+            available_cards = [c for c in all_card_ids if c not in user_cards]
+            
+            if available_cards:
+                # Re-roll to a different card
+                new_card_id = random.choice(available_cards)
+                # Update the last added card (the duplicate) to the new card
+                await conn.execute(
+                    'UPDATE cards SET card_id = ? WHERE id = (SELECT MAX(id) FROM cards WHERE user_id = ?)',
+                    (new_card_id, user_id)
+                )
+                await conn.commit()
+                return new_card_id  # Return the new card ID
+            else:
+                # User has all cards, keep the duplicate
+                return card_id
+        
+        # Card is not a duplicate, add normally
         await conn.execute(
             'INSERT INTO cards (user_id, card_id) VALUES (?, ?)', 
             (user_id, card_id)
         )
         await conn.commit()
+        return card_id
+
+async def get_user_unique_cards(user_id: int):
+    """Get all unique card IDs that user has"""
+    async with aiosqlite.connect(db_path) as conn:
+        cursor = await conn.execute(
+            'SELECT DISTINCT card_id FROM cards WHERE user_id = ? ORDER BY created_at DESC', 
+            (user_id,)
+        )
+        user_cards = await cursor.fetchall()
+        return [card[0] for card in user_cards]
+
+async def check_and_reroll_duplicate_cards():
+    """Check for duplicate cards and re-roll them to unique ones"""
+    async with aiosqlite.connect(db_path) as conn:
+        # Find all duplicate cards (same user_id and card_id beyond first occurrence)
+        cursor = await conn.execute('''
+            WITH Duplicates AS (
+                SELECT id, user_id, card_id,
+                       ROW_NUMBER() OVER (PARTITION BY user_id, card_id ORDER BY id) as rn
+                FROM cards
+            )
+            SELECT id, user_id, card_id 
+            FROM Duplicates 
+            WHERE rn > 1
+        ''')
+        duplicates = await cursor.fetchall()
+        
+        rerolled_count = 0
+        for dup_id, user_id, original_card_id in duplicates:
+            # Get user's current unique cards to find available ones
+            cursor = await conn.execute(
+                'SELECT DISTINCT card_id FROM cards WHERE user_id = ?', 
+                (user_id,)
+            )
+            user_unique_cards = [row[0] for row in await cursor.fetchall()]
+            
+            all_card_ids = list(cards.keys())
+            available_cards = [c for c in all_card_ids if c not in user_unique_cards]
+            
+            if available_cards:
+                # Re-roll to a different card
+                new_card_id = random.choice(available_cards)
+                await conn.execute(
+                    'UPDATE cards SET card_id = ? WHERE id = ?',
+                    (new_card_id, dup_id)
+                )
+                rerolled_count += 1
+                logger.info(f"Re-rolled duplicate card {original_card_id} to {new_card_id} for user {user_id}")
+            else:
+                # User has all cards, can't re-roll - delete the duplicate
+                await conn.execute('DELETE FROM cards WHERE id = ?', (dup_id,))
+                logger.info(f"Deleted duplicate card {original_card_id} for user {user_id} (all cards collected)")
+        
+        if rerolled_count > 0:
+            await conn.commit()
+            logger.info(f"Re-rolled {rerolled_count} duplicate cards")
+        
+        return rerolled_count
 
 async def get_card_by_index(user_id: int, index: int):
     async with aiosqlite.connect(db_path) as conn:
@@ -475,6 +576,45 @@ async def show_card_page(message: Union[Message, CallbackQuery], user_id: int, p
     # Update current index
     user_pagination[user_id]['current_index'] = page_index
 
+@dp.message(Command("ADM_check_duplicates"))
+async def cmd_adm_check_duplicates(message: Message):
+    if message.from_user.id != 1999559891:
+        await message.answer("Who are YOU?")
+        return
+    
+    try:
+        async with aiosqlite.connect(db_path) as conn:
+            cursor = await conn.execute('''
+                SELECT user_id, card_id, COUNT(*) as count 
+                FROM cards 
+                GROUP BY user_id, card_id 
+                HAVING COUNT(*) > 1
+            ''')
+            duplicates = await cursor.fetchall()
+            
+            if not duplicates:
+                await message.answer("No duplicate cards found!")
+                return
+            
+            duplicate_info = "Duplicate cards found:\n"
+            for user_id, card_id, count in duplicates:
+                card_data = cards.get(card_id, (0, "Unknown Card", ""))
+                duplicate_info += f"User {user_id}: {card_data[1]} (ID: {card_id}) - {count} copies\n"
+            
+            await message.answer(duplicate_info)
+    
+    except Exception as e:
+        await message.answer(f"Error checking duplicates: {e}")
+
+@dp.message(Command("ADM_reroll_duplicates"))
+async def cmd_adm_reroll_duplicates(message: Message):
+    if message.from_user.id != 1999559891:
+        await message.answer("Who are YOU?")
+        return
+    
+    rerolled_count = await check_and_reroll_duplicate_cards()
+    await message.answer(f"✅ Re-rolled {rerolled_count} duplicate cards")
+
 @dp.message(Command("rc", "roll-card", "rollcard"))
 async def cmd_roll_card(message: Message):
     await register_user(message.from_user.id)
@@ -487,32 +627,41 @@ async def cmd_roll_card(message: Message):
         hours = cooldown_remaining // 3600
         minutes = (cooldown_remaining % 3600) // 60
         
-        await message.reply(
+        await message.answer(
             f"⏰ Please wait {hours}h {minutes}m before rolling again!"
         )
         return
     
     # Roll a random card
-    card_id = random.choice(list(cards.keys()))
-    card_data = cards[card_id]
+    original_card_id = random.choice(list(cards.keys()))
+    card_data = cards[original_card_id]
     
-    # Add card to user's collection
-    await add_user_card(message.from_user.id, card_id)
+    # Add card to user's collection (will auto-re-roll if duplicate)
+    final_card_id = await add_user_card(message.from_user.id, original_card_id)
+    
+    # Get the final card data (might be different if re-rolled)
+    final_card_data = cards[final_card_id]
     
     # Set cooldown (4 hours)
     next_roll_time = current_time + (4 * 60 * 60)  # 4 hours in seconds
     await update_user_cooldown(message.from_user.id, next_roll_time)
     
     # Send the card with image
-    await send_card_with_image(message.chat.id, card_data)
+    if final_card_id != original_card_id:
+        # Card was re-rolled
+        await message.answer("🎲 Duplicate card detected! Re-rolling...")
+        await asyncio.sleep(1)  # Small delay for effect
+    
+    await send_card_with_image(message.chat.id, final_card_data)
 
 @dp.message(Command("sc", "seecards", "see-cards"))
 async def cmd_see_cards(message: Message):
     user_id = message.from_user.id
-    user_cards = await get_all_cards(user_id)
+    # Use get_user_unique_cards to show only unique cards
+    user_cards = await get_user_unique_cards(user_id)
     
     if not user_cards:
-        await message.reply("You don't have any cards yet! Use /rc to roll your first card.")
+        await message.answer("You don't have any cards yet! Use /rc to roll your first card.")
         return
     
     total_cards = len(user_cards)
