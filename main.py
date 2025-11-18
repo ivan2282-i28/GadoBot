@@ -34,7 +34,7 @@ cards= {
     14: (0, "Null")
 }
 
-}
+
 
 logging.basicConfig(
     level=logging.INFO,
