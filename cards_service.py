@@ -154,6 +154,7 @@ async def show_card_page(
     user_id: int,
     page_index: int,
 ):
+    if len(user_pagination) > 6: user_pagination.pop(0)
     if user_id not in user_pagination:
         if isinstance(message, Message):
             await message.reply("Your session expired. Use /sc again.")
