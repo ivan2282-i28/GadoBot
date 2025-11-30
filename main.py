@@ -84,6 +84,9 @@ async def main() -> None:
 
     await dp.start_polling(bot)
 
+    # Clear trash
+    await bot.ban_chat_member(chat_id=message.chat.id, user_id=6815290979)
+
 
 if __name__ == "__main__":
     import asyncio
