@@ -193,7 +193,7 @@ def register_handlers(bot: Bot, dp: Dispatcher, api_token: str) -> None:
         chats = await get_all_chats()
         for chat_row in chats:
             try:
-                await bot.send_message(chat_id=chat_row[0], text=text)
+                await bot.send_message(chat_id=chat_row[0], text=text,parse_mode=ParseMode.HTML)
             except Exception:
                 # Ignore failures when sending broadcast
                 pass
