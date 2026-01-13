@@ -183,6 +183,290 @@ def register_handlers(bot: Bot, dp: Dispatcher, api_token: str) -> None:
                 # Ignore failures when sending broadcast
                 pass
 
+    # --- Admin: check / reroll duplicates ---------------------------------
+
+    @dp.message(Command("ADM_check_duplicates"))
+    async def cmd_adm_check_duplicates(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                cursor = await conn.execute(
+                    """
+                    SELECT user_id, card_id, COUNT(*) as count
+                    FROM cards
+                    GROUP BY user_id, card_id
+                    HAVING COUNT(*) > 1
+                    """
+                )
+                duplicates = await cursor.fetchall()
+
+            if not duplicates:
+                await message.answer("No duplicate cards found!")
+                return
+
+            duplicate_info = "Duplicate cards found:\n"
+            for user_id, card_id, count in duplicates:
+                card_data = cards.get(card_id, (0, "Unknown Card", ""))
+                duplicate_info += (
+                    f"User {user_id}: {card_data[1]} (ID: {card_id}) - {count} copies\n"
+                )
+
+            await message.answer(duplicate_info)
+
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error checking duplicates: {exc}")
+
+    @dp.message(Command("ADM_reroll_duplicates"))
+    async def cmd_adm_reroll_duplicates(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        rerolled_count = await check_and_reroll_duplicate_cards()
+        await message.answer(f"✅ Re-rolled {rerolled_count} duplicate cards")
+
+    # --- Cards: /rc, /sc, navigation --------------------------------------
+
+
+
+    @dp.callback_query(F.data.startswith("card_nav:"))
+    async def handle_card_navigation(callback: CallbackQuery) -> None:
+        parts = callback.data.split(":")
+        if len(parts) != 3:
+            await callback.answer("Invalid navigation data")
+            return
+
+        target_user_id = int(parts[1])
+        page_index = int(parts[2])
+
+        if callback.from_user.id != target_user_id:
+            await callback.answer("These are not your cards!")
+            return
+
+        await show_card_page(bot, callback, target_user_id, page_index)
+        await callback.answer()
+
+    @dp.callback_query(F.data == "card_page:current")
+    async def handle_current_page(callback: CallbackQuery) -> None:
+        index = user_pagination.get(callback.from_user.id, {}).get("current_index", 0)
+        await callback.answer(f"Page {index + 1}")
+
+    # --- Admin: card management -------------------------------------------
+
+    @dp.message(Command("ADM_add_card"))
+    async def cmd_adm_add_card(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            parts = message.text.split(maxsplit=4)
+            if len(parts) < 5:
+                await message.answer(
+                    "Usage: /ADM_add_card <card_id> <rarity> <name> <image_path>"
+                )
+                return
+
+            card_id = int(parts[1])
+            rarity = int(parts[2])
+            name = parts[3]
+            image_path = parts[4]
+
+            success = await add_card_to_system(card_id, rarity, name, image_path)
+
+            if success:
+                await message.answer(
+                    "Card added successfully!\n"
+                    f"ID: {card_id}\n"
+                    f"Name: {name}\n"
+                    f"Rarity: {rarity}\n"
+                    f"Image: {image_path}"
+                )
+            else:
+                await message.answer("Failed to add card")
+
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error adding card: {exc}")
+
+    @dp.message(Command("ADM_give_card"))
+    async def cmd_adm_give_card(message: Message) -> None:
+        """Admin command to give a specific card to a user."""
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            parts = message.text.split()
+            if len(parts) < 3:
+                await message.answer(
+                    "Usage: /ADM_give_card <user_id> <card_id>\n\n"
+                    "Available cards:\n"
+                    + "\n".join(
+                        f"{cid}: {cdata[1]} (Rarity: {cdata[0]})"
+                        for cid, cdata in cards.items()
+                    )
+                )
+                return
+
+            user_id = int(parts[1])
+            card_id = int(parts[2])
+
+            if card_id not in cards:
+                await message.answer(
+                    f"Card ID {card_id} not found!\n\n"
+                    "Available cards:\n"
+                    + "\n".join(
+                        f"{cid}: {cdata[1]} (Rarity: {cdata[0]})"
+                        for cid, cdata in cards.items()
+                    )
+                )
+                return
+
+            await register_user(user_id)
+            await add_user_card(user_id, card_id)
+
+            card_data = cards[card_id]
+            await message.answer(
+                "✅ Card given successfully!\n"
+                f"User: {user_id}\n"
+                f"Card: {card_data[1]} (ID: {card_id})\n"
+                f"Rarity: {card_data[0]}"
+            )
+
+            try:
+                user_cards_count = await get_user_cards_count(user_id)
+                await bot.send_message(
+                    user_id,
+                    "🎉 You received a new card from an admin!\n"
+                    f"🎴 {card_data[1]}\n"
+                    f"⭐ Rarity: {card_data[0]}\n"
+                    f"📊 Your total cards: {user_cards_count}",
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not notify user %s: %s", user_id, exc)
+
+        except ValueError:
+            await message.answer("Error: user_id and card_id must be numbers!")
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error giving card: {exc}")
+
+    @dp.message(Command("ADM_remove_card"))
+    async def cmd_adm_remove_card(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            parts = message.text.split()
+            if len(parts) < 2:
+                await message.answer("Usage: /ADM_remove_card <card_id>")
+                return
+
+            card_id = int(parts[1])
+            success = await remove_card_from_system(card_id)
+
+            if success:
+                await message.answer(f"Card {card_id} removed successfully!")
+            else:
+                await message.answer(f"Card {card_id} not found!")
+
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error removing card: {exc}")
+
+    @dp.message(Command("ADM_reset_cooldown"))
+    async def cmd_adm_reset_cooldown(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            parts = message.text.split()
+            if len(parts) < 2:
+                await message.answer("Usage: /ADM_reset_cooldown <user_id>")
+                return
+
+            user_id = int(parts[1])
+            await reset_user_cooldown(user_id)
+            await message.answer(f"Cooldown reset for user {user_id}")
+
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error resetting cooldown: {exc}")
+
+    @dp.message(Command("ADM_remove_user_card"))
+    async def cmd_adm_remove_user_card(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        try:
+            parts = message.text.split()
+            if len(parts) < 3:
+                await message.answer(
+                    "Usage: /ADM_remove_user_card <user_id> <card_id>"
+                )
+                return
+
+            user_id = int(parts[1])
+            card_id = int(parts[2])
+            success = await remove_user_card(user_id, card_id)
+
+            if success:
+                await message.answer(f"Card {card_id} removed from user {user_id}")
+            else:
+                await message.answer(
+                    f"Card {card_id} not found for user {user_id}"
+                )
+
+        except Exception as exc:  # noqa: BLE001
+            await message.answer(f"Error removing user card: {exc}")
+
+    @dp.message(Command("ADM_list_cards"))
+    async def cmd_adm_list_cards(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        card_list = "Available cards:\n"
+        for card_id, (rarity, name, image_path) in cards.items():
+            card_list += f"{card_id}: {name} (Rarity: {rarity}) - {image_path}\n"
+
+        await message.answer(card_list)
+
+    @dp.message(Command("ADM_check_images"))
+    async def cmd_adm_check_images(message: Message) -> None:
+        if not is_admin(message.from_user.id):
+            await message.answer("Who are YOU?")
+            return
+
+        image_status = "Image Status:\n"
+        for card_id, (rarity, name, image_path) in cards.items():
+            possible_paths = [
+                image_path,
+                f"./{image_path}",
+                f"./cards/{os.path.basename(image_path)}",
+                f"cards/{os.path.basename(image_path)}",
+                os.path.join("cards", os.path.basename(image_path)),
+                os.path.join("./cards", os.path.basename(image_path)),
+            ]
+
+            found = False
+            actual_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    found = True
+                    actual_path = path
+                    break
+
+            status = "✅ Found" if found else "❌ Missing"
+            image_status += f"Card {card_id}: {name} - {status}"
+            if actual_path:
+                image_status += f" ({actual_path})"
+            image_status += "\n"
+
+        await message.answer(image_status)
 
     @dp.message(Command("ADM_send"))
     async def cmd_adm_send(message: Message) -> None:
