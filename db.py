@@ -28,14 +28,6 @@ async def init_db():
         )
         ''')
         await conn.execute('''
-        CREATE TABLE IF NOT EXISTS cards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            card_id INTEGER NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        ''')
-        await conn.execute('''
         CREATE TABLE IF NOT EXISTS blacklist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             chat_id INTEGER NOT NULL,
@@ -146,23 +138,6 @@ async def get_user(user_id: int):
         return await cursor.fetchone()
 
 
-async def update_user_cooldown(user_id: int, cooldown: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            'UPDATE users SET rc_cd = ? WHERE user_id = ?',
-            (cooldown, user_id)
-        )
-        await conn.commit()
-
-
-async def reset_user_cooldown(user_id: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            'UPDATE users SET rc_cd = 0 WHERE user_id = ?',
-            (user_id,)
-        )
-        await conn.commit()
-
 
 async def get_user_lang(user_id: int) -> str:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -182,87 +157,6 @@ async def set_user_lang(user_id: int, lang: str) -> None:
             'UPDATE users SET lang = ? WHERE user_id = ?',
             (lang, user_id)
         )
-        await conn.commit()
-
-
-# Cards
-async def add_card(user_id: int, card_id: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            'INSERT INTO cards (user_id, card_id) VALUES (?, ?)',
-            (user_id, card_id)
-        )
-        await conn.commit()
-
-
-async def get_user_cards(user_id: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        cursor = await conn.execute(
-            'SELECT DISTINCT card_id FROM cards WHERE user_id = ? ORDER BY created_at DESC',
-            (user_id,)
-        )
-        rows = await cursor.fetchall()
-        return [row[0] for row in rows]
-
-
-async def get_user_cards_count(user_id: int) -> int:
-    async with aiosqlite.connect(DB_PATH) as conn:
-        cursor = await conn.execute(
-            'SELECT COUNT(*) FROM cards WHERE user_id = ?',
-            (user_id,)
-        )
-        count = await cursor.fetchone()
-        return count[0] if count else 0
-
-
-async def get_card_by_index(user_id: int, index: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        cursor = await conn.execute(
-            'SELECT card_id FROM cards WHERE user_id = ? ORDER BY created_at DESC LIMIT 1 OFFSET ?',
-            (user_id, index)
-        )
-        card = await cursor.fetchone()
-        return card[0] if card else None
-
-
-async def remove_user_card(user_id: int, card_id: int) -> bool:
-    async with aiosqlite.connect(DB_PATH) as conn:
-        cursor = await conn.execute(
-            'DELETE FROM cards WHERE user_id = ? AND card_id = ?',
-            (user_id, card_id)
-        )
-        affected = cursor.rowcount
-        await conn.commit()
-        return affected > 0
-
-
-async def get_duplicate_cards():
-    async with aiosqlite.connect(DB_PATH) as conn:
-        cursor = await conn.execute('''
-            WITH Duplicates AS (
-                SELECT id, user_id, card_id,
-                       ROW_NUMBER() OVER (PARTITION BY user_id, card_id ORDER BY id) as rn
-                FROM cards
-            )
-            SELECT id, user_id, card_id
-            FROM Duplicates
-            WHERE rn > 1
-        ''')
-        return await cursor.fetchall()
-
-
-async def update_card(card_row_id: int, new_card_id: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            'UPDATE cards SET card_id = ? WHERE id = ?',
-            (new_card_id, card_row_id)
-        )
-        await conn.commit()
-
-
-async def delete_card_row(card_row_id: int):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute('DELETE FROM cards WHERE id = ?', (card_row_id,))
         await conn.commit()
 
 

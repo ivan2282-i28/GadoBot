@@ -38,7 +38,6 @@ This repository implements a Telegram bot using **aiogram 3** with:
 
 - A **filter system**: per-chat text/regex/media filters that trigger automatic replies.
 - A **moderation module**: basic `/ban` command and filter-based bans.
-- A **card/collection system**: collectible "cards" that users can roll and view with pagination.
 - Simple **internationalization** via a translation dictionary.
 - **SQLite** storage via `aiosqlite`.
 

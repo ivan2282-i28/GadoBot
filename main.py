@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 
-from cards_service import check_and_reroll_duplicate_cards
+
 from commands import register_handlers, setup_bot_commands
 from db import init_db
 
@@ -14,12 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 async def startup(bot: Bot) -> None:
-    """Initialize database and fix duplicate cards on startup."""
     await init_db()
-    rerolled_count = await check_and_reroll_duplicate_cards()
-    if rerolled_count > 0:
-        logger.info("Re-rolled %s duplicate cards during startup", rerolled_count)
-
     # Configure bot command list for private and group chats
     await setup_bot_commands(bot)
 

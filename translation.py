@@ -107,8 +107,6 @@ translation = {
         "cmd_stats_desc": "Chat statistics",
         "cmd_stats_global_desc": "Global bot statistics",
         "cmd_help_desc": "Show help",
-        "cmd_rc_desc": "Roll a card",
-        "cmd_sc_desc": "See your cards",
         "cmd_filter_desc": "Add a filter",
         "cmd_filters_desc": "List filters",
         "cmd_remove_filter_desc": "Remove a filter",
