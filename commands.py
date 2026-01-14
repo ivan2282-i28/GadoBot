@@ -78,8 +78,6 @@ async def setup_bot_commands(bot: Bot) -> None:
         types.BotCommand(command="stats_global", description=t["cmd_stats_global_desc"]),
         types.BotCommand(command="help", description=t["cmd_help_desc"]),
         types.BotCommand(command="lang", description=t["cmd_lang_desc"]),
-        types.BotCommand(command="rc", description=t["cmd_rc_desc"]),
-        types.BotCommand(command="sc", description=t["cmd_sc_desc"]),
         types.BotCommand(command="filter", description=t["cmd_filter_desc"]),
         types.BotCommand(command="filters", description=t["cmd_filters_desc"]),
         types.BotCommand(command="remove_filter", description=t["cmd_remove_filter_desc"]),
