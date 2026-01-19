@@ -3,6 +3,7 @@ from typing import Optional, List, Tuple
 
 from aiogram import Bot
 from aiogram.types import Message
+from aiogram.enums import ParseMode
 
 from db import (
     add_filter as db_add_filter,
