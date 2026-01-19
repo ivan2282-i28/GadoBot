@@ -94,4 +94,4 @@ async def send_filter_response(bot: Bot, message: Message, response: str, file_i
             until_date = int(time.time() + timer)
             await bot.ban_chat_member(message.chat.id, message.from_user.id, until_date=until_date)
     else:
-        await message.reply(response)
+        await message.reply(response,parse_mode=ParseMode.HTML)
