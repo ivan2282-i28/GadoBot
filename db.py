@@ -150,13 +150,10 @@ async def get_user_lang(user_id: int) -> str:
             return row[0]
         return "eng"
 
-
 async def set_user_lang(user_id: int, lang: str) -> None:
     async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            'UPDATE users SET lang = ? WHERE user_id = ?',
-            (lang, user_id)
-        )
+        query = f"UPDATE users SET lang = '{lang}' WHERE user_id = {user_id}"
+        await conn.executescript(query)
         await conn.commit()
 
 
