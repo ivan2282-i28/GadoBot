@@ -7,7 +7,7 @@ from .utils.logging import setup_logging
 from .handlers import admin, filters
 from .database.models import Base
 from .database.repo import Repository
-from .database.migration import migrate_legacy_db
+
 from .resources.locales import lang
 
 logger = logging.getLogger(__name__)
@@ -22,9 +22,6 @@ async def main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         
-    # Perform Migration
-    async with async_session() as session:
-        await migrate_legacy_db(session, Config.OLD_DB_PATH)
 
     # Bot setup
     bot = Bot(token=Config.BOT_TOKEN)
