@@ -7,35 +7,32 @@ router = Router()
 
 @router.message(Command("filter"))
 async def add_filter(message: types.Message, repo: Repository):
-    # message.text is None if the command is in a photo/video caption
     raw_text = message.text or message.caption
-    
     if not raw_text:
         return
 
     args = raw_text.split(" ", 2)
     if len(args) < 2:
-        # Optionally notify user they missed arguments
         return
         
     trigger = args[1]
-    response = args[2] if len(args) > 2 else ""  # Default to empty response if not provided
+    response = args[2] if len(args) > 2 else ""
     
-    
-    if message.reply_to_message:
-        if message.reply_to_message.photo:
-            file_id = message.reply_to_message.photo[-1].file_id
-            file_type = "photo"
-        elif message.reply_to_message.video:
-            file_id = message.reply_to_message.video.file_id
-            file_type = "video"
-    else:
-        if message.photo:
-            file_id = message.photo[-1].file_id
-            file_type = "photo"
-        elif message.video:
-            file_id = message.video.file_id
-            file_type = "video"
+    file_id = None
+    file_type = None
+
+    # Determine which message to pull the media from
+    target = message.reply_to_message if message.reply_to_message else message
+
+    if target.photo:
+        file_id = target.photo[-1].file_id
+        file_type = "photo"
+    elif target.video:
+        file_id = target.video.file_id
+        file_type = "video"
+    elif target.animation:  # Added GIF support
+        file_id = target.animation.file_id
+        file_type = "animation"
             
     await repo.add_filter(message.chat.id, trigger, response, file_id, file_type)
     await message.reply(lang("filter_added", trigger=trigger))
@@ -67,15 +64,16 @@ async def cmd_list_filters(message: types.Message, repo: Repository):
 
 @router.message(F.text)
 async def check_filters(message: types.Message, repo: Repository):
-    # Check if text matches any filter trigger
     filters = await repo.get_filters(message.chat.id)
     for f in filters:
-        if f.trigger == message.text:
+        if f.trigger.lower() == message.text.lower(): # Bonus: case-insensitive check
             if f.file_id:
                 if f.file_type == "photo":
-                    await message.answer_photo(f.file_id, caption=f.response)
+                    await message.reply_photo(f.file_id, caption=f.response)
                 elif f.file_type == "video":
-                    await message.answer_video(f.file_id, caption=f.response)
+                    await message.reply_video(f.file_id, caption=f.response)
+                elif f.file_type == "animation": # Added GIF support
+                    await message.reply_animation(f.file_id, caption=f.response)
             else:
-                await message.answer(f.response)
+                await message.reply(f.response)
             return
