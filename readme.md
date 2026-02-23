@@ -1,5 +1,5 @@
 # GadoBot >:3
-
+I swear i will rewrite it when i will have free time and if wont abandon this project
 https://github.com/ivan2282-i28/GadoBot/raw/main/cat-insane-monjjunirawr.mp4
 
 I'm GadoBot  
