@@ -1,5 +1,6 @@
 import logging
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from .config import Config
@@ -23,8 +24,14 @@ async def main():
         await conn.run_sync(Base.metadata.create_all)
         
 
-    # Bot setup
-    bot = Bot(token=Config.BOT_TOKEN)
+    if Config.PROXY:
+        proxy_url = Config.PROXY
+
+        session = AiohttpSession(proxy=proxy_url)
+
+        bot = Bot(token=Config.BOT_TOKEN,session=session)
+    else:
+        bot = Bot(token=Config.BOT_TOKEN)
     dp = Dispatcher()
     
     # Middleware: Inject Repository into handlers

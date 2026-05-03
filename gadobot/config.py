@@ -5,6 +5,7 @@ load_dotenv()
 
 class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN")
+    PROXY = os.getenv("PROXY")
     # New DB location
     DB_URL = "sqlite+aiosqlite:///gado.db"
 
